@@ -10,10 +10,10 @@ function SignUp() {
   const navigate = useNavigate();
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       [e.target.id]: e.target.value,
-    });
+    }));
   };
 
   const handleSubmit = async (e) => {
