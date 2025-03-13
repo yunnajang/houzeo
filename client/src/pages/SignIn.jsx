@@ -1,20 +1,26 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   signInStart,
   signInSuccess,
   signInFailure,
+  resetError,
 } from '../redux/user/userSlice.js';
 import OAuth from '../components/OAuth.jsx';
 
 function SignIn() {
   const [formData, setFormData] = useState({});
+
   const { loading, error } = useSelector((state) => state.user);
 
   const navigate = useNavigate();
 
   const dispatch = useDispatch();
+
+  useEffect(() => {
+    dispatch(resetError());
+  }, []);
 
   const handleChange = (e) => {
     setFormData((prev) => ({
@@ -80,7 +86,7 @@ function SignIn() {
 
       <div className='flex gap-2 mt-5'>
         <p>Dont have an account?</p>
-        <Link to={'/sign-up'}>
+        <Link to='/sign-up'>
           <span className='text-blue-700'>Sign up</span>
         </Link>
       </div>
