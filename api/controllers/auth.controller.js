@@ -19,10 +19,9 @@ export const signin = async (req, res, next) => {
   const { email, password } = req.body;
   try {
     const validUser = await User.findOne({ email });
-
     if (!validUser) return next(errorHandler(404, 'User not found'));
-    const isPasswordValid = bcryptjs.compareSync(password, validUser.password);
 
+    const isPasswordValid = bcryptjs.compareSync(password, validUser.password);
     if (!isPasswordValid) return next(errorHandler(401, 'Wrong credentials'));
 
     const token = jwt.sign({ id: validUser._id }, process.env.JWT_SECRET);
@@ -52,6 +51,7 @@ export const google = async (req, res, next) => {
         Math.random().toString(36).slice(-8) +
         Math.random().toString(36).slice(-8);
       const hashedPassword = bcryptjs.hashSync(generatedPassword, 10);
+
       const newUser = new User({
         username:
           req.body.name.split(' ').join('').toLowerCase() +

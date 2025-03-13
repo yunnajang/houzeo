@@ -149,7 +149,8 @@ function Profile() {
         <p className='text-sm self-center'>
           {fileUploadError ? (
             <span className='text-red-700'>
-              Error Image upload (Image must be less then 2mb)
+              Error Image upload (The file must be an image and smaller than
+              2mb)
             </span>
           ) : filePerc > 0 && filePerc < 100 ? (
             <span className='text-slate-700'>{`Uploading ${filePerc}%`}</span>
