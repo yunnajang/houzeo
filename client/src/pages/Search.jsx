@@ -17,7 +17,6 @@ function Search() {
   const [showMore, setShowMore] = useState(false);
 
   const navigate = useNavigate();
-  console.log(listings);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);

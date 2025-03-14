@@ -13,8 +13,6 @@ function Home() {
 
   SwiperCore.use([Navigation]);
 
-  console.log(rentListings);
-
   useEffect(() => {
     const fetchOfferListings = async () => {
       try {
