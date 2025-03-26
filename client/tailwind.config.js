@@ -48,6 +48,14 @@ export default {
           '@apply inline-block text-sm font-semibold px-4 py-2 rounded-full hover:opacity-90 transition':
             {},
         },
+        '.form-input': {
+          '@apply w-full border border-slate-300 p-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-tertiary':
+            {},
+        },
+        '.primary-btn': {
+          '@apply w-full bg-brand-main text-brand-white text-sm font-semibold py-3 rounded-full transition hover:opacity-90 disabled:opacity-70':
+            {},
+        },
       });
     },
   ],

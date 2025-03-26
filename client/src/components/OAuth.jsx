@@ -40,9 +40,14 @@ function OAuth() {
     <button
       onClick={handleGoogleClick}
       type='button'
-      className='bg-red-700 text-white p-3 rounded-lg uppercase hover:opacity-95'
+      className='w-full border border-slate-300 flex items-center justify-center gap-3 py-3 rounded-full bg-white text-slate-700 font-semibold text-sm hover:bg-slate-100 transition'
     >
-      Continue with google
+      <img
+        src='https://www.svgrepo.com/show/475656/google-color.svg'
+        alt='Google logo'
+        className='w-5 h-5'
+      />
+      <span className='whitespace-nowrap'>Continue with Google</span>
     </button>
   );
 }
