@@ -3,5 +3,7 @@
 @tailwind utilities;
 
 body {
-  background-color: rgb(241, 245, 241);
+  @apply bg-brand-white;
+  @apply text-brand-paragraph;
+  @apply font-inter;
 }

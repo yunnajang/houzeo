@@ -1,80 +1,166 @@
-import { FaSearch } from 'react-icons/fa';
-import { Link, useNavigate } from 'react-router-dom';
+import { FaBars, FaTimes } from 'react-icons/fa';
+import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { useEffect, useState } from 'react';
 
 function Header() {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [isAnimatingOut, setIsAnimatingOut] = useState(false);
+
   const { currentUser } = useSelector((state) => state.user);
-  const [searchTerm, setSearchTerm] = useState('');
 
-  const navigate = useNavigate();
+  const navLinks = [
+    { label: 'Rent', to: '/search?type=rent' },
+    { label: 'Sale', to: '/search?type=sale' },
+    { label: 'Entire Homes', to: '/search' },
+  ];
 
-  useEffect(() => {
-    const urlParams = new URLSearchParams(location.search);
-    const searchTermFromUrl = urlParams.get('searchTerm');
-    if (searchTermFromUrl) {
-      setSearchTerm(searchTermFromUrl);
+  // 👉 Handle mobile menu toggle with animation
+  const toggleMenu = () => {
+    if (menuOpen) {
+      setIsAnimatingOut(true); // triggers slide-out animation
+    } else {
+      setMenuOpen(true); // open menu instantly
     }
-  }, [location.search]);
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-
-    const urlParams = new URLSearchParams(window.location.search);
-    urlParams.set('searchTerm', searchTerm);
-
-    const searchQuery = urlParams.toString();
-    navigate(`/search?${searchQuery}`);
   };
 
+  // 👉 When animating out, close menu after animation ends
+  useEffect(() => {
+    let timeout;
+
+    if (isAnimatingOut) {
+      timeout = setTimeout(() => {
+        setMenuOpen(false);
+        setIsAnimatingOut(false);
+      }, 300);
+    }
+
+    return () => clearTimeout(timeout);
+  }, [isAnimatingOut]);
+
   return (
-    <header className='bg-slate-200 shadow-md'>
-      <div className='flex justify-between items-center max-w-6xl mx-auto p-3'>
-        <Link to='/'>
-          <h1 className='text-slate-500 font-bold text-sm sm:text-xl'>
-            Houzeo
-          </h1>
-        </Link>
-        <form
-          onSubmit={handleSubmit}
-          className='bg-slate-100 p-3 rounded-lg flex items-center'
-        >
-          <input
-            type='text'
-            placeholder='Search...'
-            className='bg-transparent focus:outline-none w-24 sm:w-64'
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          <button>
-            <FaSearch className='text-slate-600' />
-          </button>
-        </form>
-        <ul className='flex gap-4'>
-          <Link to='/'>
-            <li className='hidden sm:inline text-slate-700 hover:underline'>
-              Home
-            </li>
+    <header className='tracking-wide font-manrope bg-brand-white text-brand-main sticky top-0 z-50'>
+      <div className='max-w-7xl mx-auto px-4 sm:px-8'>
+        <div className='flex items-center justify-between gap-8 h-16'>
+          {/* 👉 Logo (click closes mobile menu if open) */}
+          <Link to='/' onClick={() => menuOpen && toggleMenu()}>
+            <div
+              className='font-bricolage font-extrabold text-2xl'
+              role='heading'
+            >
+              Houzeo
+            </div>
           </Link>
-          <Link to='/about'>
-            <li className='hidden sm:inline text-slate-700 hover:underline'>
-              About
-            </li>
-          </Link>
-          <Link to='/profile'>
-            {currentUser ? (
-              <img
-                className='rounded-full h-7 w-7 object-cover'
-                src={currentUser.avatar}
-                alt='profile'
-              />
-            ) : (
-              <li className='sm:inline text-slate-700 hover:underline'>
-                Sign in
+
+          {/* 👉 Desktop navigation */}
+          <ul className='hidden sm:flex gap-6 flex-1 text-sm'>
+            {navLinks.map(({ label, to }) => (
+              <li key={to}>
+                <Link to={to} className='link-opacity-hover'>
+                  {label}
+                </Link>
               </li>
+            ))}
+          </ul>
+
+          {/* 👉 Desktop user actions (auth/avatar) */}
+          <div className='hidden sm:flex items-center gap-6'>
+            {currentUser ? (
+              <>
+                <Link
+                  to='/create-listing'
+                  className='
+                  text-brand-white bg-brand-main
+                  button-opacity-hover'
+                >
+                  Post a Listing
+                </Link>
+                <Link to='/profile'>
+                  <img
+                    className='rounded-full h-8 w-8 object-cover'
+                    src={currentUser.avatar}
+                    alt='profile'
+                  />
+                </Link>
+              </>
+            ) : (
+              <Link
+                to='/sign-in'
+                className='text-brand-white bg-brand-main button-opacity-hover'
+              >
+                Sign In
+              </Link>
             )}
-          </Link>
-        </ul>
+          </div>
+
+          {/* 👉 Mobile menu toggle button */}
+          <button onClick={toggleMenu} className='sm:hidden'>
+            {menuOpen ? (
+              <FaTimes className='w-6 h-6' />
+            ) : (
+              <FaBars className='w-6 h-6' />
+            )}
+          </button>
+
+          {/* 👉 Mobile dropdown menu */}
+          {menuOpen && (
+            <div
+              className={`fixed top-16 left-0 right-0 bottom-0 bg-brand-white z-50 py-8 px-4 sm:hidden animate-slideDown ${
+                isAnimatingOut
+                  ? 'animate-slideUpFadeOut'
+                  : 'animate-slideDownFadeIn'
+              }`}
+            >
+              <ul className='flex flex-col gap-6 text-lg'>
+                {navLinks.map(({ label, to }) => (
+                  <li key={to}>
+                    <Link
+                      to={to}
+                      className='link-opacity-hover'
+                      onClick={toggleMenu}
+                    >
+                      {label}
+                    </Link>
+                  </li>
+                ))}
+
+                {/* Auth / User actions */}
+                {currentUser ? (
+                  <>
+                    <li>
+                      <Link
+                        to='/create-listing'
+                        onClick={toggleMenu}
+                        className='link-opacity-hover'
+                      >
+                        Post a Listing
+                      </Link>
+                    </li>
+                    <li>
+                      <Link
+                        to='/profile'
+                        onClick={toggleMenu}
+                        className='link-opacity-hover'
+                      >
+                        My Profile
+                      </Link>
+                    </li>
+                  </>
+                ) : (
+                  <li>
+                    <Link
+                      to='/sign-in'
+                      onClick={toggleMenu}
+                      className='link-opacity-hover'
+                    >
+                      Sign In
+                    </Link>
+                  </li>
+                )}
+              </ul>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );
