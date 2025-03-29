@@ -23,8 +23,8 @@ function SignIn() {
 
     if (!formData.password) {
       newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters';
     }
 
     setErrors(newErrors);
@@ -60,9 +60,9 @@ function SignIn() {
 
       const data = await res.json();
 
-      if (!res.ok || !data.success) {
+      if (!res.ok || data.success === false) {
         setErrors({
-          general: 'Failed to sign in. Please try again.',
+          general: 'Incorrect email or password. Please try again.',
         });
         return;
       }

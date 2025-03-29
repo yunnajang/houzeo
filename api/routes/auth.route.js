@@ -1,6 +1,7 @@
 import express from 'express';
 import {
-  signup,
+  sendVerificationCode,
+  verifyAndSignup,
   signin,
   google,
   signout,
@@ -8,7 +9,8 @@ import {
 
 const router = express.Router();
 
-router.post('/signup', signup);
+router.post('/verify/send-code', sendVerificationCode);
+router.post('/verify/confirm', verifyAndSignup);
 router.post('/signin', signin);
 router.post('/google', google);
 router.get('/signout', signout);
