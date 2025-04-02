@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useState } from 'react';
-import { useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import { FaBars, FaTimes } from 'react-icons/fa';
+import useUserStore from '../store/userStore';
 
 // Desktop navigation component
 const DesktopNav = memo(({ navLinks }) => (
@@ -94,8 +94,7 @@ const MobileNav = memo(
 );
 
 function Header() {
-  const { currentUser } = useSelector((state) => state.user);
-
+  const { currentUser } = useUserStore();
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 

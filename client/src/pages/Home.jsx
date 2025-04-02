@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay, EffectFade } from 'swiper/modules';
-import 'swiper/css/bundle';
-import 'swiper/css/effect-fade';
 import SwiperCore from 'swiper';
 import ListingSection from '../components/ListingSection';
+import { listingApi } from '../api/listings';
+import 'swiper/css/bundle';
+import 'swiper/css/effect-fade';
 
 const heroImages = Array.from({ length: 4 }, (_, i) => ({
   id: i + 1,
@@ -81,47 +82,38 @@ function ImageSwiper() {
 }
 
 function Home() {
-  const [offerListings, setOfferListings] = useState([]);
-  const [saleListings, setSaleListings] = useState([]);
-  const [rentListings, setRentListings] = useState([]);
+  const {
+    data: offers,
+    isLoading: isOffersLoading,
+    error: offersError,
+  } = useQuery({
+    queryKey: ['offers'],
+    queryFn: listingApi.getOffers,
+  });
+
+  const {
+    data: sales,
+    isLoading: isSalesLoading,
+    error: salesError,
+  } = useQuery({
+    queryKey: ['sales'],
+    queryFn: listingApi.getSales,
+  });
+
+  const {
+    data: rentals,
+    isLoading: isRentalsLoading,
+    error: rentalsError,
+  } = useQuery({
+    queryKey: ['rentals'],
+    queryFn: listingApi.getRentals,
+  });
+
+  const isLoading = isOffersLoading || isSalesLoading || isRentalsLoading;
+
+  const error = offersError || salesError || rentalsError;
 
   SwiperCore.use([Autoplay, EffectFade]);
-
-  useEffect(() => {
-    const fetchOfferListings = async () => {
-      try {
-        const res = await fetch(`/api/listing/get?offer=true&limit=4`);
-        const data = await res.json();
-        setOfferListings(data);
-        fetchSaleListings();
-      } catch (error) {
-        console.log(error);
-      }
-    };
-
-    const fetchSaleListings = async () => {
-      try {
-        const res = await fetch(`/api/listing/get?type=sale&limit=4`);
-        const data = await res.json();
-        setSaleListings(data);
-        fetchRentListings();
-      } catch (error) {
-        console.log(error);
-      }
-    };
-
-    const fetchRentListings = async () => {
-      try {
-        const res = await fetch(`/api/listing/get?type=rent&limit=4`);
-        const data = await res.json();
-        setRentListings(data);
-      } catch (error) {
-        console.log(error);
-      }
-    };
-
-    fetchOfferListings();
-  }, []);
 
   return (
     <main>
@@ -140,7 +132,7 @@ function Home() {
             <h1 className='font-bricolage font-extrabold text-4xl md:text-5xl lg:text-6xl text-white mb-4'>
               Find it. Love it. Live in it.
             </h1>
-            <p className='text-white text-base sm:text-lg md:text-xl leading-relaxed mb-16'>
+            <p className='text-white text-base sm:text-lg lg:text-xl leading-relaxed mb-16'>
               Houzeo connects people with places they love.
               <br />
               Discover homes, apartments, and rentals tailored to your lifestyle
@@ -161,7 +153,7 @@ function Home() {
               <br />
               Live in it.
             </h1>
-            <p className='text-brand-paragraph/80 text-base sm:text-lg md:text-xl leading-relaxed mb-16'>
+            <p className='text-brand-paragraph/80 text-base sm:text-lg lg:text-xl leading-relaxed mb-16'>
               Houzeo connects people with places they love.
               <br />
               Discover homes, apartments, and rentals tailored to your lifestyle
@@ -178,26 +170,25 @@ function Home() {
       </section>
 
       {/* Listing Sections */}
-      <ListingSection
-        title='Recent offers'
-        linkText='Show more offers'
-        linkUrl='/search?offer=true'
-        listings={offerListings}
-      />
-
-      <ListingSection
-        title='Recent places for sale'
-        linkText='Show more places for sale'
-        linkUrl='/search?type=sale'
-        listings={saleListings}
-      />
-
-      <ListingSection
-        title='Recent places for rent'
-        linkText='Show more places for rent'
-        linkUrl='/search?type=rent'
-        listings={rentListings}
-      />
+      {isLoading ? (
+        <div className='text-center py-8'>Loading listings...</div>
+      ) : error ? (
+        <div className='text-center py-8 text-red-500'>{error.message}</div>
+      ) : (
+        <>
+          <ListingSection
+            title='Special Offers'
+            listings={offers}
+            type='offer'
+          />
+          <ListingSection title='Featured Sales' listings={sales} type='sale' />
+          <ListingSection
+            title='Featured Rentals'
+            listings={rentals}
+            type='rent'
+          />
+        </>
+      )}
     </main>
   );
 }
