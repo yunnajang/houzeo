@@ -149,7 +149,7 @@ function Header() {
   }, []);
 
   return (
-    <header className='text-brand-main sticky top-0 z-50'>
+    <header className='text-brand-main bg-brand-white sticky top-0 z-50'>
       <div className='max-w-6xl mx-auto px-5 sm:px-8 flex items-center justify-between gap-6 h-16 sm:h-18'>
         {/* Logo */}
         <Link to='/' onClick={handleLogoClick}>
