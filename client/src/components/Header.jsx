@@ -1,30 +1,127 @@
-import { FaBars, FaTimes } from 'react-icons/fa';
-import { Link } from 'react-router-dom';
+import { memo, useCallback, useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
-import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { FaBars, FaTimes } from 'react-icons/fa';
+
+// Desktop navigation component
+const DesktopNav = memo(({ navLinks }) => (
+  <nav className='hidden sm:block flex-1 text-[15px]'>
+    <ul className='flex gap-6'>
+      {navLinks.map(({ label, to }) => (
+        <li key={to}>
+          <Link to={to} className='nav-link-hover'>
+            {label}
+          </Link>
+        </li>
+      ))}
+    </ul>
+  </nav>
+));
+
+// Desktop user actions component
+const DesktopUserActions = memo(({ currentUser }) => (
+  <div className='hidden sm:flex items-center gap-4'>
+    {currentUser ? (
+      <>
+        <Link to='/create-listing' className='button-hover'>
+          Post a Listing
+        </Link>
+        <Link to='/profile'>
+          <img
+            className='rounded-full h-8 w-8 object-cover box-content border-2 border-transparent hover:border-brand-tertiary transition-all duration-200'
+            src={currentUser.avatar}
+            alt='profile'
+          />
+        </Link>
+      </>
+    ) : (
+      <Link to='/sign-in' className='button-hover'>
+        Sign In
+      </Link>
+    )}
+  </div>
+));
+
+// Mobile navigation component
+const MobileNav = memo(
+  ({ navLinks, currentUser, toggleMenu, isAnimatingOut }) => (
+    <nav
+      className={`fixed top-16 left-0 right-0 bottom-0 bg-brand-white z-50 py-8 px-5 sm:hidden ${
+        isAnimatingOut ? 'animate-slideUpFadeOut' : 'animate-slideDownFadeIn'
+      }`}
+    >
+      <ul className='flex flex-col gap-6 text-lg'>
+        {navLinks.map(({ label, to }) => (
+          <li key={to}>
+            <Link to={to} className='nav-link-hover' onClick={toggleMenu}>
+              {label}
+            </Link>
+          </li>
+        ))}
+
+        {/* Auth / User actions */}
+        {currentUser ? (
+          <>
+            <li className='pt-6 border-t border-brand-tertiary/20'>
+              <Link
+                to='/create-listing'
+                onClick={toggleMenu}
+                className='nav-link-hover'
+              >
+                Post a Listing
+              </Link>
+            </li>
+            <li>
+              <Link
+                to='/profile'
+                onClick={toggleMenu}
+                className='nav-link-hover'
+              >
+                My Profile
+              </Link>
+            </li>
+          </>
+        ) : (
+          <li className='pt-6 border-t border-brand-tertiary/20'>
+            <Link to='/sign-in' onClick={toggleMenu} className='button-hover'>
+              Sign In
+            </Link>
+          </li>
+        )}
+      </ul>
+    </nav>
+  )
+);
 
 function Header() {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [isAnimatingOut, setIsAnimatingOut] = useState(false);
-
   const { currentUser } = useSelector((state) => state.user);
 
+  const [isAnimatingOut, setIsAnimatingOut] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+
   const navLinks = [
+    { label: 'Entire Homes', to: '/search' },
     { label: 'Rent', to: '/search?type=rent' },
     { label: 'Sale', to: '/search?type=sale' },
-    { label: 'Entire Homes', to: '/search' },
   ];
 
-  // 👉 Handle mobile menu toggle with animation
-  const toggleMenu = () => {
+  // Handle mobile menu toggle with animation
+  const toggleMenu = useCallback(() => {
     if (menuOpen) {
-      setIsAnimatingOut(true); // triggers slide-out animation
+      setIsAnimatingOut(true);
     } else {
-      setMenuOpen(true); // open menu instantly
+      setMenuOpen(true);
     }
-  };
+  }, [menuOpen]);
 
-  // 👉 When animating out, close menu after animation ends
+  // Handle logo click (closes menu if open)
+  const handleLogoClick = useCallback(() => {
+    if (menuOpen) {
+      toggleMenu();
+    }
+  }, [menuOpen, toggleMenu]);
+
+  // When animating out, close menu after animation ends
   useEffect(() => {
     let timeout;
 
@@ -38,129 +135,59 @@ function Header() {
     return () => clearTimeout(timeout);
   }, [isAnimatingOut]);
 
+  // Close menu when screen resizes past breakpoint
+  useEffect(() => {
+    const handleResize = () => {
+      // sm breakpoint in Tailwind is 640px by default
+      if (window.innerWidth >= 640) {
+        setIsAnimatingOut(true);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
-    <header className='tracking-wide font-manrope bg-brand-white text-brand-main sticky top-0 z-50'>
-      <div className='max-w-7xl mx-auto px-4 sm:px-8'>
-        <div className='flex items-center justify-between gap-8 h-16'>
-          {/* 👉 Logo (click closes mobile menu if open) */}
-          <Link to='/' onClick={() => menuOpen && toggleMenu()}>
-            <div
-              className='font-bricolage font-extrabold text-2xl'
-              role='heading'
-            >
-              Houzeo
-            </div>
-          </Link>
+    <header className='text-brand-main sticky top-0 z-50'>
+      <div className='max-w-6xl mx-auto px-5 sm:px-8 flex items-center justify-between gap-6 h-16 sm:h-18'>
+        {/* Logo */}
+        <Link to='/' onClick={handleLogoClick}>
+          <h1 className='font-bricolage font-extrabold text-2xl'>Houzeo</h1>
+        </Link>
 
-          {/* 👉 Desktop navigation */}
-          <ul className='hidden sm:flex gap-6 flex-1 text-sm'>
-            {navLinks.map(({ label, to }) => (
-              <li key={to}>
-                <Link to={to} className='link-opacity-hover'>
-                  {label}
-                </Link>
-              </li>
-            ))}
-          </ul>
+        {/* Desktop navigation */}
+        <DesktopNav navLinks={navLinks} />
 
-          {/* 👉 Desktop user actions (auth/avatar) */}
-          <div className='hidden sm:flex items-center gap-6'>
-            {currentUser ? (
-              <>
-                <Link
-                  to='/create-listing'
-                  className='
-                  text-brand-white bg-brand-main
-                  button-opacity-hover'
-                >
-                  Post a Listing
-                </Link>
-                <Link to='/profile'>
-                  <img
-                    className='rounded-full h-8 w-8 object-cover'
-                    src={currentUser.avatar}
-                    alt='profile'
-                  />
-                </Link>
-              </>
-            ) : (
-              <Link
-                to='/sign-in'
-                className='text-brand-white bg-brand-main button-opacity-hover'
-              >
-                Sign In
-              </Link>
-            )}
-          </div>
+        {/* Desktop user actions */}
+        <DesktopUserActions currentUser={currentUser} />
 
-          {/* 👉 Mobile menu toggle button */}
-          <button onClick={toggleMenu} className='sm:hidden'>
+        {/* Mobile menu toggle button */}
+        <button
+          onClick={toggleMenu}
+          className='sm:hidden relative group'
+          aria-expanded={menuOpen}
+          aria-label='Toggle navigation menu'
+        >
+          <span className='absolute inset-0 rounded-md bg-gray-100 opacity-0 group-hover:opacity-100 transition-opacity duration-200'></span>
+          <span className='relative p-1.5 block'>
             {menuOpen ? (
-              <FaTimes className='w-6 h-6' />
+              <FaTimes className='w-5 h-5' aria-hidden='true' />
             ) : (
-              <FaBars className='w-6 h-6' />
+              <FaBars className='w-5 h-5' aria-hidden='true' />
             )}
-          </button>
+          </span>
+        </button>
 
-          {/* 👉 Mobile dropdown menu */}
-          {menuOpen && (
-            <div
-              className={`fixed top-16 left-0 right-0 bottom-0 bg-brand-white z-50 py-8 px-4 sm:hidden animate-slideDown ${
-                isAnimatingOut
-                  ? 'animate-slideUpFadeOut'
-                  : 'animate-slideDownFadeIn'
-              }`}
-            >
-              <ul className='flex flex-col gap-6 text-lg'>
-                {navLinks.map(({ label, to }) => (
-                  <li key={to}>
-                    <Link
-                      to={to}
-                      className='link-opacity-hover'
-                      onClick={toggleMenu}
-                    >
-                      {label}
-                    </Link>
-                  </li>
-                ))}
-
-                {/* Auth / User actions */}
-                {currentUser ? (
-                  <>
-                    <li>
-                      <Link
-                        to='/create-listing'
-                        onClick={toggleMenu}
-                        className='link-opacity-hover'
-                      >
-                        Post a Listing
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        to='/profile'
-                        onClick={toggleMenu}
-                        className='link-opacity-hover'
-                      >
-                        My Profile
-                      </Link>
-                    </li>
-                  </>
-                ) : (
-                  <li>
-                    <Link
-                      to='/sign-in'
-                      onClick={toggleMenu}
-                      className='link-opacity-hover'
-                    >
-                      Sign In
-                    </Link>
-                  </li>
-                )}
-              </ul>
-            </div>
-          )}
-        </div>
+        {/* Mobile dropdown menu */}
+        {menuOpen && (
+          <MobileNav
+            navLinks={navLinks}
+            currentUser={currentUser}
+            toggleMenu={toggleMenu}
+            isAnimatingOut={isAnimatingOut}
+          />
+        )}
       </div>
     </header>
   );
