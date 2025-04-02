@@ -1,17 +1,91 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Swiper, SwiperSlide } from 'swiper/react';
+import { Autoplay, EffectFade } from 'swiper/modules';
 import 'swiper/css/bundle';
+import 'swiper/css/effect-fade';
 import SwiperCore from 'swiper';
-import { Navigation } from 'swiper/modules';
-import ListingItem from '../components/ListingItem';
+import ListingSection from '../components/ListingSection';
+
+const heroImages = Array.from({ length: 4 }, (_, i) => ({
+  id: i + 1,
+  src: new URL(`../assets/hero-img-${i + 1}.jpg`, import.meta.url).href,
+}));
+
+function SearchBar() {
+  return (
+    <Link
+      to='/search'
+      className='flex items-center gap-3 bg-brand-tertiary pr-5 pl-2 py-2 rounded-full hover:bg-brand-highlight transition-all duration-200 w-full shadow-md'
+    >
+      <div className='h-10 w-10 bg-white rounded-full flex items-center justify-center shadow-md'>
+        <svg
+          xmlns='http://www.w3.org/2000/svg'
+          fill='none'
+          viewBox='0 0 24 24'
+          strokeWidth={2.5}
+          stroke='currentColor'
+          className='w-5 h-5 text-brand-main'
+        >
+          <path
+            strokeLinecap='round'
+            strokeLinejoin='round'
+            d='m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z'
+          />
+        </svg>
+      </div>
+      <div className='flex-1 text-left'>
+        <span className='block text-brand-main font-medium text-base sm:text-lg'>
+          Search destinations
+        </span>
+      </div>
+    </Link>
+  );
+}
+
+function ImageSwiper() {
+  return (
+    <div className='overflow-hidden h-full w-full'>
+      {heroImages && heroImages.length > 0 ? (
+        <Swiper
+          effect='fade'
+          autoplay={{
+            delay: 1000,
+            disableOnInteraction: false,
+          }}
+          speed={1000}
+          loop={true}
+          className='h-full w-full'
+        >
+          {heroImages.map((image) => (
+            <SwiperSlide key={image.id}>
+              <div
+                style={{
+                  background: `url(${image.src}) center no-repeat`,
+                  backgroundSize: 'cover',
+                }}
+                className='h-full w-full transition-opacity duration-300'
+              ></div>
+            </SwiperSlide>
+          ))}
+        </Swiper>
+      ) : (
+        <div className='h-full w-full bg-brand-secondary flex items-center justify-center'>
+          <p className='text-brand-paragraph text-center'>
+            No images available
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function Home() {
   const [offerListings, setOfferListings] = useState([]);
   const [saleListings, setSaleListings] = useState([]);
   const [rentListings, setRentListings] = useState([]);
 
-  SwiperCore.use([Navigation]);
+  SwiperCore.use([Autoplay, EffectFade]);
 
   useEffect(() => {
     const fetchOfferListings = async () => {
@@ -50,111 +124,81 @@ function Home() {
   }, []);
 
   return (
-    <div>
-      {/* top */}
-      <div className='flex flex-col gap-6 py-28 px-3 max-w-6xl mx-auto'>
-        <h1 className='text-slate-700 font-bold text-3xl lg:text-6xl'>
-          Find your next <span className='text-slate-500'>perfect</span> <br />
-          place with ease
-        </h1>
-        <div className='text-gray-400 text-xs sm:text-sm'>
-          Houzeo will help you find your home fast, easy and comfortable. <br />
-          Our expert support are always available.
+    <main>
+      {/* Hero Section */}
+      <section className='bg-brand-white max-w-6xl mx-auto'>
+        {/* Mobile Layout */}
+        <div className='md:hidden relative w-full h-[70vh]'>
+          <div className='absolute inset-0 w-full h-full z-0'>
+            <ImageSwiper />
+          </div>
+
+          <div className='absolute inset-0 w-full h-full bg-black opacity-50 z-10'></div>
+
+          {/* Text Content */}
+          <div className='relative z-20 h-full flex flex-col items-center justify-center px-5 text-center'>
+            <h1 className='font-bricolage font-extrabold text-4xl md:text-5xl lg:text-6xl text-white mb-4'>
+              Find it. Love it. Live in it.
+            </h1>
+            <p className='text-white text-base sm:text-lg md:text-xl leading-relaxed mb-16'>
+              Houzeo connects people with places they love.
+              <br />
+              Discover homes, apartments, and rentals tailored to your lifestyle
+              and location.
+            </p>
+
+            <SearchBar />
+          </div>
         </div>
-        <Link
-          to='/search'
-          className='text-xs sm:text-sm text-blue-800 font-bold hover:underline'
-        >
-          Let's get started...
-        </Link>
-      </div>
 
-      {/* swiper */}
-      <Swiper navigation>
-        {offerListings &&
-          offerListings.length > 0 &&
-          offerListings.map((listing) => (
-            <SwiperSlide>
-              <div
-                style={{
-                  background: `url(${listing.imageUrls[0]}) center no-repeat`,
-                  backgroundSize: 'cover',
-                }}
-                className='h-[500px]'
-                key={listing._id}
-              ></div>
-            </SwiperSlide>
-          ))}
-      </Swiper>
+        {/* Desktop Layout */}
+        <div className='hidden md:grid grid-cols-2 gap-10 items-center px-8 py-12'>
+          <div className='flex flex-col text-left max-w-md'>
+            <h1 className='font-bricolage font-extrabold text-4xl md:text-5xl lg:text-6xl text-brand-main mb-4'>
+              Find it.
+              <br />
+              Love it.
+              <br />
+              Live in it.
+            </h1>
+            <p className='text-brand-paragraph/80 text-base sm:text-lg md:text-xl leading-relaxed mb-16'>
+              Houzeo connects people with places they love.
+              <br />
+              Discover homes, apartments, and rentals tailored to your lifestyle
+              and location.
+            </p>
 
-      {/* listing results for offer, sale and rent */}
-      <div className='max-w-6xl mx-auto p-3 flex flex-col gap-8 my-10'>
-        {offerListings && offerListings.length > 0 && (
-          <div>
-            <div className='my-3'>
-              <h2 className='text-2xl font-semibold text-slate-600'>
-                Recent offers
-              </h2>
-              <Link
-                to='/search?offer=true'
-                className='text-sm text-blue-800 hover:underline'
-              >
-                Show more offers
-              </Link>
-            </div>
-            <div className='flex flex-wrap gap-4'>
-              {offerListings.map((listing) => (
-                <ListingItem listing={listing} key={listing._id} />
-              ))}
-            </div>
+            <SearchBar />
           </div>
-        )}
-      </div>
-      <div className='max-w-6xl mx-auto p-3 flex flex-col gap-8 my-10'>
-        {saleListings && saleListings.length > 0 && (
-          <div>
-            <div className='my-3'>
-              <h2 className='text-2xl font-semibold text-slate-600'>
-                Recent places for sale
-              </h2>
-              <Link
-                to='/search?type=sale'
-                className='text-sm text-blue-800 hover:underline'
-              >
-                Show more places for sale
-              </Link>
-            </div>
-            <div className='flex flex-wrap gap-4'>
-              {saleListings.map((listing) => (
-                <ListingItem listing={listing} key={listing._id} />
-              ))}
-            </div>
+
+          <div className='aspect-square w-full overflow-hidden rounded-lg shadow-lg'>
+            <ImageSwiper />
           </div>
-        )}
-      </div>
-      <div className='max-w-6xl mx-auto p-3 flex flex-col gap-8 my-10'>
-        {rentListings && rentListings.length > 0 && (
-          <div>
-            <div className='my-3'>
-              <h2 className='text-2xl font-semibold text-slate-600'>
-                Recent places for rent
-              </h2>
-              <Link
-                to='/search?type=rent'
-                className='text-sm text-blue-800 hover:underline'
-              >
-                Show more places for rent
-              </Link>
-            </div>
-            <div className='flex flex-wrap gap-4'>
-              {rentListings.map((listing) => (
-                <ListingItem listing={listing} key={listing._id} />
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+        </div>
+      </section>
+
+      {/* Listing Sections */}
+      <ListingSection
+        title='Recent offers'
+        linkText='Show more offers'
+        linkUrl='/search?offer=true'
+        listings={offerListings}
+      />
+
+      <ListingSection
+        title='Recent places for sale'
+        linkText='Show more places for sale'
+        linkUrl='/search?type=sale'
+        listings={saleListings}
+      />
+
+      <ListingSection
+        title='Recent places for rent'
+        linkText='Show more places for rent'
+        linkUrl='/search?type=rent'
+        listings={rentListings}
+      />
+    </main>
   );
 }
 
