@@ -9,10 +9,8 @@ export default {
         brand: {
           white: '#fffffe',
           main: '#272343',
-          secondary: '#e3f6f5',
-          tertiary: '#bae8e8',
-          highlight: '#ffd803',
-          paragraph: '#2d334a',
+          secondary: '#bae8e8',
+          tertiary: '#FADADD   ',
         },
       },
       animation: {
@@ -44,15 +42,15 @@ export default {
             {},
         },
         '.button-hover': {
-          '@apply text-brand-white bg-brand-main px-5 py-2 rounded-full text-[15px] hover:bg-opacity-80 transition-all duration-200':
+          '@apply font-medium text-brand-white bg-brand-main px-5 py-2 rounded-full text-[15px] hover:bg-opacity-80 transition-all duration-200':
+            {},
+        },
+        '.button-full': {
+          '@apply font-medium text-brand-white bg-brand-main w-full py-3 rounded-full text-[15px] hover:bg-opacity-80 transition-all duration-200':
             {},
         },
         '.form-input': {
-          '@apply w-full border border-slate-300 p-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-tertiary':
-            {},
-        },
-        '.primary-btn': {
-          '@apply w-full bg-brand-main text-brand-white text-sm font-semibold py-3 rounded-full transition hover:opacity-90 disabled:opacity-70':
+          '@apply w-full border border-slate-300 p-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-secondary':
             {},
         },
       });

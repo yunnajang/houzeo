@@ -4,6 +4,6 @@
 
 body {
   @apply bg-brand-white;
-  @apply text-brand-paragraph;
+  @apply text-brand-main;
   @apply font-inter;
 }

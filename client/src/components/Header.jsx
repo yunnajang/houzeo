@@ -28,7 +28,7 @@ const DesktopUserActions = memo(({ currentUser }) => (
         </Link>
         <Link to='/profile'>
           <img
-            className='rounded-full h-8 w-8 object-cover box-content border-2 border-transparent hover:border-brand-tertiary transition-all duration-200'
+            className='rounded-full h-8 w-8 object-cover box-content border-2 border-transparent hover:border-brand-secondary transition-all duration-200'
             src={currentUser.avatar}
             alt='profile'
           />
@@ -62,7 +62,7 @@ const MobileNav = memo(
         {/* Auth / User actions */}
         {currentUser ? (
           <>
-            <li className='pt-6 border-t border-brand-tertiary/20'>
+            <li className='pt-6 border-t border-brand-secondary/20'>
               <Link
                 to='/create-listing'
                 onClick={toggleMenu}
@@ -82,7 +82,7 @@ const MobileNav = memo(
             </li>
           </>
         ) : (
-          <li className='pt-6 border-t border-brand-tertiary/20'>
+          <li className='pt-6 border-t border-brand-secondary/20'>
             <Link to='/sign-in' onClick={toggleMenu} className='button-hover'>
               Sign In
             </Link>
@@ -149,7 +149,7 @@ function Header() {
 
   return (
     <header className='text-brand-main bg-brand-white sticky top-0 z-50'>
-      <div className='max-w-6xl mx-auto px-5 sm:px-8 flex items-center justify-between gap-6 h-16 md:h-[4.5rem]'>
+      <div className='max-w-6xl mx-auto px-5 sm:px-8 flex items-center justify-between gap-6 h-16 md:h-[72px]'>
         {/* Logo */}
         <Link to='/' onClick={handleLogoClick}>
           <h1 className='font-bricolage font-extrabold text-2xl'>Houzeo</h1>

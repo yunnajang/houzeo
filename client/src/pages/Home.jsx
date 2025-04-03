@@ -17,7 +17,7 @@ function SearchBar() {
   return (
     <Link
       to='/search'
-      className='flex items-center gap-3 bg-brand-tertiary pr-5 pl-2 py-2 rounded-full hover:bg-brand-highlight transition-all duration-200 w-full shadow-md'
+      className='flex items-center gap-3 bg-brand-secondary pr-5 pl-2 py-2 rounded-full hover:bg-brand-tertiary transition-all duration-200 w-full shadow-md'
     >
       <div className='h-10 w-10 bg-white rounded-full flex items-center justify-center shadow-md'>
         <svg
@@ -72,9 +72,7 @@ function ImageSwiper() {
         </Swiper>
       ) : (
         <div className='h-full w-full bg-brand-secondary flex items-center justify-center'>
-          <p className='text-brand-paragraph text-center'>
-            No images available
-          </p>
+          <p className='text-brand-main text-center'>No images available</p>
         </div>
       )}
     </div>
@@ -82,6 +80,12 @@ function ImageSwiper() {
 }
 
 function Home() {
+  const sharedQueryOptions = {
+    staleTime: 1000 * 60 * 5,
+    cacheTime: 1000 * 60 * 10,
+    refetchOnWindowFocus: true,
+  };
+
   const {
     data: offers,
     isLoading: isOffersLoading,
@@ -89,6 +93,7 @@ function Home() {
   } = useQuery({
     queryKey: ['offers'],
     queryFn: listingApi.getOffers,
+    ...sharedQueryOptions,
   });
 
   const {
@@ -98,6 +103,7 @@ function Home() {
   } = useQuery({
     queryKey: ['sales'],
     queryFn: listingApi.getSales,
+    ...sharedQueryOptions,
   });
 
   const {
@@ -107,10 +113,10 @@ function Home() {
   } = useQuery({
     queryKey: ['rentals'],
     queryFn: listingApi.getRentals,
+    ...sharedQueryOptions,
   });
 
   const isLoading = isOffersLoading || isSalesLoading || isRentalsLoading;
-
   const error = offersError || salesError || rentalsError;
 
   SwiperCore.use([Autoplay, EffectFade]);
@@ -144,16 +150,16 @@ function Home() {
         </div>
 
         {/* Desktop Layout */}
-        <div className='hidden md:grid grid-cols-2 gap-10 items-center px-8 py-12'>
+        <div className='hidden md:grid grid-cols-2 gap-10 items-center px-8 pt-12'>
           <div className='flex flex-col text-left max-w-md'>
-            <h1 className='font-bricolage font-extrabold text-4xl md:text-5xl lg:text-6xl text-brand-main mb-4'>
+            <h1 className='font-bricolage font-extrabold text-4xl lg:text-6xl text-brand-main mb-4'>
               Find it.
               <br />
               Love it.
               <br />
               Live in it.
             </h1>
-            <p className='text-brand-paragraph/80 text-base sm:text-lg lg:text-xl leading-relaxed mb-16'>
+            <p className='text-brand-main/80 text-base lg:text-lg xl:text-xl leading-relaxed mb-10 lg:mb-16'>
               Houzeo connects people with places they love.
               <br />
               Discover homes, apartments, and rentals tailored to your lifestyle
@@ -171,23 +177,40 @@ function Home() {
 
       {/* Listing Sections */}
       {isLoading ? (
-        <div className='text-center py-8'>Loading listings...</div>
+        <div className='flex justify-center items-center min-h-[200px]'>
+          <div className='w-8 h-8 border-4 border-brand-main border-t-transparent rounded-full animate-spin'></div>
+        </div>
       ) : error ? (
-        <div className='text-center py-8 text-red-500'>{error.message}</div>
+        <div className='text-center py-8'>
+          <p className='text-gray-600 mb-3'>Failed to load listings</p>
+          <button
+            onClick={() => window.location.reload()}
+            className='text-brand-main hover:text-brand-main/80'
+          >
+            Try again
+          </button>
+        </div>
       ) : (
-        <>
+        <section className='flex flex-col gap-12 md:gap-16 max-w-6xl mx-auto px-5 sm:px-8 pt-12 sm:pt-20 md:pt-24 lg:pt-32 xl:pt-36'>
           <ListingSection
-            title='Special Offers'
+            title='Recent Offers'
+            linkUrl='/search?offer=true'
             listings={offers}
             type='offer'
           />
-          <ListingSection title='Featured Sales' listings={sales} type='sale' />
           <ListingSection
-            title='Featured Rentals'
+            title='Recent Sales'
+            linkUrl='/search?type=sale'
+            listings={sales}
+            type='sale'
+          />
+          <ListingSection
+            title='Recent Rentals'
+            linkUrl='/search?type=rent'
             listings={rentals}
             type='rent'
           />
-        </>
+        </section>
       )}
     </main>
   );
