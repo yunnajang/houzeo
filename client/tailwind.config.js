@@ -38,15 +38,19 @@ export default {
     function ({ addComponents }) {
       addComponents({
         '.nav-link-hover': {
-          '@apply transition-all duration-200 opacity-80 hover:font-medium hover:opacity-100 transition-all duration-200':
+          '@apply text-base transition-all duration-200 opacity-80 hover:font-medium hover:opacity-100 transition-all duration-200':
             {},
         },
         '.button-hover': {
-          '@apply font-medium text-brand-white bg-brand-main px-5 py-2 rounded-full text-[15px] hover:bg-opacity-80 transition-all duration-200':
+          '@apply font-medium text-brand-white bg-brand-main px-5 py-2 rounded-full text-base hover:bg-opacity-80 transition-all duration-200':
             {},
         },
         '.button-full': {
-          '@apply font-medium text-brand-white bg-brand-main w-full py-3 rounded-full text-[15px] hover:bg-opacity-80 transition-all duration-200':
+          '@apply font-medium text-brand-white bg-brand-main w-full py-3 rounded-full text-base hover:bg-opacity-80 transition-all duration-200':
+            {},
+        },
+        '.loading-disabled': {
+          '@apply disabled:bg-gray-200 disabled:text-gray-500  disabled:border disabled:border-gray-300 disabled:cursor-not-allowed':
             {},
         },
         '.form-input': {

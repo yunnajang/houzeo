@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { signInSuccess } from '../redux/user/userSlice.js';
 import OAuth from '../components/OAuth.jsx';
+import AuthLayout from '../components/layouts/AuthLayout.jsx';
 
 function SignIn() {
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -77,12 +78,12 @@ function SignIn() {
   };
 
   return (
-    <div className='w-full max-w-md mx-auto px-4 sm:px-6 py-6 sm:py-10'>
-      <h1 className='text-2xl sm:text-3xl font-bold text-brand-main mb-8 text-center'>
+    <AuthLayout>
+      <h1 className='text-3xl font-bold text-brand-main mb-8 text-center'>
         Sign In
       </h1>
 
-      <form onSubmit={handleSubmit} className='space-y-6 mb-10'>
+      <form onSubmit={handleSubmit} className='space-y-6 mb-6'>
         <div className='space-y-4'>
           <div>
             <input
@@ -92,9 +93,7 @@ function SignIn() {
               placeholder='Email'
               autoComplete='email'
               required
-              className={`form-input ${
-                errors.email ? 'border-red-500' : 'border-gray-300'
-              }`}
+              className={`form-input ${errors.email && 'border-red-500'}`}
               onChange={handleChange}
             />
             {errors.email && (
@@ -119,26 +118,19 @@ function SignIn() {
               <p className='text-xs text-red-600 mt-1'>{errors.password}</p>
             )}
           </div>
-        </div>
 
-        {errors.general && (
-          <p className='text-sm text-red-600 mt-2' role='alert'>
-            {errors.general}
-          </p>
-        )}
+          {errors.general && (
+            <p className='text-sm text-red-600' role='alert'>
+              {errors.general}
+            </p>
+          )}
+        </div>
 
         <button
           type='submit'
           disabled={loading}
           className='
-            w-full px-4 py-3 text-center font-medium mt-6
-            bg-brand-main text-white rounded-md transition-all
-            hover:bg-brand-main/90 
-            focus:outline-none focus:ring-2 focus:ring-brand-main/50
-            disabled:bg-gray-200 disabled:text-gray-500 
-            disabled:border disabled:border-gray-300 
-            disabled:cursor-not-allowed 
-          '
+            button-full loading-disabled'
           aria-busy={loading}
         >
           {loading ? (
@@ -184,7 +176,7 @@ function SignIn() {
         <OAuth />
       </form>
 
-      <div className='text-center text-sm'>
+      <div className='text-center text-base'>
         <p className='text-gray-600'>
           Don't have an account?{' '}
           <Link
@@ -195,7 +187,7 @@ function SignIn() {
           </Link>
         </p>
       </div>
-    </div>
+    </AuthLayout>
   );
 }
 

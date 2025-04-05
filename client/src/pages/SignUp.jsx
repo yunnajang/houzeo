@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import OAuth from '../components/OAuth.jsx';
 import VerifyModal from '../components/VerifyModal.jsx';
+import AuthLayout from '../components/layouts/AuthLayout.jsx';
 
 function SignUp() {
   const [formData, setFormData] = useState({
@@ -128,64 +129,117 @@ function SignUp() {
   };
 
   return (
-    <div className='max-w-md w-full mx-auto py-20'>
-      <h1 className='text-3xl font-bold text-center text-brand-main mb-6'>
+    <AuthLayout>
+      <h1 className='text-3xl font-bold text-center text-brand-main mb-8'>
         Sign Up
       </h1>
 
-      <form onSubmit={handleSubmit} className='flex flex-col gap-4'>
-        <input
-          type='text'
-          id='username'
-          name='username'
-          placeholder='Username'
-          required
-          className='form-input'
-          onChange={handleChange}
-        />
-        {errors.username && (
-          <p className='text-sm text-red-600'>{errors.username}</p>
-        )}
+      <form onSubmit={handleSubmit} className='space-y-6 mb-6'>
+        <div className='space-y-4'>
+          <div>
+            <input
+              type='text'
+              id='username'
+              name='username'
+              placeholder='Username'
+              required
+              className={`form-input ${errors.email && 'border-red-500'}`}
+              onChange={handleChange}
+            />
+            {errors.username && (
+              <p className='text-xm text-red-600 mt-1'>{errors.username}</p>
+            )}
+          </div>
 
-        <input
-          type='email'
-          id='email'
-          name='email'
-          placeholder='Email'
-          required
-          className='form-input'
-          onChange={handleChange}
-        />
-        {errors.email && <p className='text-sm text-red-600'>{errors.email}</p>}
+          <div>
+            <input
+              type='email'
+              id='email'
+              name='email'
+              placeholder='Email'
+              required
+              className={`form-input ${errors.email && 'border-red-500'}`}
+              onChange={handleChange}
+            />
+            {errors.email && (
+              <p className='text-xm text-red-600 mt-1'>{errors.email}</p>
+            )}
+          </div>
 
-        <input
-          type='password'
-          id='password'
-          name='password'
-          placeholder='Password'
-          className='form-input'
-          onChange={handleChange}
-        />
-        {errors.password && (
-          <p className='text-sm text-red-600'>{errors.password}</p>
-        )}
+          <div>
+            <input
+              type='password'
+              id='password'
+              name='password'
+              placeholder='Password'
+              className={`form-input ${errors.email && 'border-red-500'}`}
+              onChange={handleChange}
+            />
+            {errors.password && (
+              <p className='text-xm text-red-600 mt-1'>{errors.password}</p>
+            )}
+          </div>
 
-        <button type='submit' disabled={loading} className='primary-btn'>
-          {loading ? 'Sending code...' : 'Sign Up'}
+          {errors.general && (
+            <p className='text-sm text-red-600' role='alert'>
+              {errors.general}
+            </p>
+          )}
+        </div>
+
+        <button
+          type='submit'
+          disabled={loading}
+          className='button-full loading-disabled'
+        >
+          {loading ? (
+            <span className='flex items-center justify-center'>
+              <svg
+                className='animate-spin -ml-1 mr-2 h-4 w-4 text-white'
+                xmlns='http://www.w3.org/2000/svg'
+                fill='none'
+                viewBox='0 0 24 24'
+              >
+                <circle
+                  className='opacity-25'
+                  cx='12'
+                  cy='12'
+                  r='10'
+                  stroke='currentColor'
+                  strokeWidth='4'
+                ></circle>
+                <path
+                  className='opacity-75'
+                  fill='currentColor'
+                  d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'
+                ></path>
+              </svg>
+              Sending code...
+            </span>
+          ) : (
+            'Sign Up'
+          )}
         </button>
 
-        {errors.general && (
-          <p className='text-sm text-red-600 text-center'>{errors.general}</p>
-        )}
+        <div className='relative my-6'>
+          <div className='absolute inset-0 flex items-center'>
+            <div className='w-full border-t border-gray-300'></div>
+          </div>
+          <div className='relative flex justify-center text-sm'>
+            <span className='px-2 bg-white text-gray-500'>
+              Or continue with
+            </span>
+          </div>
+        </div>
 
         <OAuth />
       </form>
 
-      <div className='text-center text-sm mt-6'>
+      <div className='text-center text-base'>
         <p className='text-slate-600'>
           Already have an account?{' '}
           <Link
-            to='/sign-up'
+            to='/sign-in'
             className='text-brand-main font-semibold hover:underline'
           >
             Sign In
@@ -203,7 +257,7 @@ function SignUp() {
           onResend={handleResendCode}
         />
       )}
-    </div>
+    </AuthLayout>
   );
 }
 
