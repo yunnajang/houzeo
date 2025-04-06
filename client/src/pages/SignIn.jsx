@@ -1,80 +1,37 @@
-import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from 'yup';
 import { Link, useNavigate } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
-import { signInSuccess } from '../redux/user/userSlice.js';
+import { useSignIn } from '../hooks/useSignIn.js';
 import OAuth from '../components/OAuth.jsx';
 import AuthLayout from '../components/layouts/AuthLayout.jsx';
 
+const schema = yup.object().shape({
+  email: yup
+    .string()
+    .email('Invalid email format')
+    .required('Email is required'),
+  password: yup
+    .string()
+    .min(8, 'Must be at least 8 characters long')
+    .required('Password is required.'),
+});
+
 function SignIn() {
-  const [formData, setFormData] = useState({ email: '', password: '' });
-  const [errors, setErrors] = useState({});
-  const [loading, setLoading] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
+    resolver: yupResolver(schema),
+    shouldFocusError: true,
+  });
 
+  const { mutate, isPending, isError, error } = useSignIn();
   const navigate = useNavigate();
-  const dispatch = useDispatch();
 
-  const validate = () => {
-    const newErrors = {};
-
-    if (!formData.email) {
-      newErrors.email = 'Email is required';
-    } else if (!/^[\w-.]+@[\w-]+\.[a-z]{2,}$/i.test(formData.email)) {
-      newErrors.email = 'Invalid email format';
-    }
-
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleChange = (e) => {
-    setErrors((prev) => ({
-      ...prev,
-      [e.target.id]: null,
-    }));
-
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.id]: e.target.value,
-    }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!validate()) return;
-
-    setLoading(true);
-    try {
-      const res = await fetch('/api/auth/signin', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || data.success === false) {
-        setErrors({
-          general: 'Incorrect email or password. Please try again.',
-        });
-        return;
-      }
-
-      dispatch(signInSuccess(data));
-      navigate('/');
-    } catch (error) {
-      setErrors({ general: 'Something went wrong. Please try again later.' });
-    } finally {
-      setLoading(false);
-    }
+  const onSubmit = (formData) => {
+    mutate(formData, { onSuccess: () => navigate('/') });
   };
 
   return (
@@ -83,57 +40,57 @@ function SignIn() {
         Sign In
       </h1>
 
-      <form onSubmit={handleSubmit} className='space-y-6 mb-6'>
+      <form onSubmit={handleSubmit(onSubmit)} className='space-y-6 mb-6'>
         <div className='space-y-4'>
           <div>
             <input
               type='email'
               id='email'
-              name='email'
               placeholder='Email'
               autoComplete='email'
-              required
+              {...register('email')}
               className={`form-input ${errors.email && 'border-red-500'}`}
-              onChange={handleChange}
             />
             {errors.email && (
-              <p className='text-xs text-red-600 mt-1'>{errors.email}</p>
+              <p className='text-xs text-red-600 mt-1'>
+                {errors.email.message}
+              </p>
             )}
           </div>
 
           <div>
             <input
               type='password'
-              id='password'
               name='password'
               placeholder='Password'
               autoComplete='current-password'
-              required
+              {...register('password')}
               className={`form-input ${
                 errors.password ? 'border-red-500' : 'border-gray-300'
               }`}
-              onChange={handleChange}
             />
             {errors.password && (
-              <p className='text-xs text-red-600 mt-1'>{errors.password}</p>
+              <p className='text-xs text-red-600 mt-1'>
+                {errors.password.message}
+              </p>
             )}
           </div>
 
-          {errors.general && (
+          {isError && (
             <p className='text-sm text-red-600' role='alert'>
-              {errors.general}
+              {error.message}
             </p>
           )}
         </div>
 
         <button
           type='submit'
-          disabled={loading}
+          disabled={isPending}
           className='
             button-full loading-disabled'
-          aria-busy={loading}
+          aria-busy={isPending}
         >
-          {loading ? (
+          {isPending ? (
             <span className='flex items-center justify-center'>
               <svg
                 className='animate-spin -ml-1 mr-2 h-4 w-4 text-white'

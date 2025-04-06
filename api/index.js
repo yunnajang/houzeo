@@ -6,6 +6,7 @@ import authRouter from './routes/auth.route.js';
 import listingRouter from './routes/listing.route.js';
 import cookieParser from 'cookie-parser';
 import path from 'path';
+import cors from 'cors';
 
 dotenv.config();
 
@@ -22,8 +23,22 @@ const __dirname = path.resolve();
 
 const app = express();
 
-app.use(express.json());
+const allowedOrigins = ['http://localhost:5173', 'https://houzeo.onrender.com'];
 
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+  })
+);
+
+app.use(express.json());
 app.use(cookieParser());
 
 app.listen(3000, () => {
