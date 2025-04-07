@@ -1,131 +1,76 @@
+import { useForm } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from 'yup';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 import OAuth from '../components/OAuth.jsx';
 import VerifyModal from '../components/VerifyModal.jsx';
 import AuthLayout from '../components/layouts/AuthLayout.jsx';
+import { useSendCode } from '../hooks/useEmailVerification.js';
+import { useSignUp } from '../hooks/useSignUp.js';
+
+const schema = yup.object().shape({
+  username: yup
+    .string()
+    .min(3, 'Must be at least 3 characters long')
+    .required('Username is required'),
+  email: yup
+    .string()
+    .email('Invalid email format')
+    .required('Email is required'),
+  password: yup
+    .string()
+    .min(8, 'Must be at least 8 characters long')
+    .required('Password is required.')
+    .matches(/[a-z]/, 'Must contain at least one lowercase letter')
+    .matches(/[0-9]/, 'Must contain at least one number')
+    .matches(
+      /[!@#$%^&*()\-_=+{};:,<.>]/,
+      'Must contain at least one special character'
+    ),
+  confirmPassword: yup
+    .string()
+    .oneOf([yup.ref('password')], 'Passwords do not match')
+    .required('Please confirm your password'),
+});
 
 function SignUp() {
-  const [formData, setFormData] = useState({
-    username: '',
-    email: '',
-    password: '',
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
+    resolver: yupResolver(schema),
+    shouldFocusError: true,
   });
-  const [errors, setErrors] = useState({});
-  const [loading, setLoading] = useState(false);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [codeError, setCodeError] = useState('');
+
+  const [formData, setFormData] = useState(null);
+  const [showModal, setShowModal] = useState(false);
 
   const navigate = useNavigate();
+  const {
+    mutate: sendCode,
+    isPending: isSendCodePending,
+    isError: isSendCodeError,
+    error: sendCodeError,
+  } = useSendCode();
+  const {
+    mutate: signUp,
+    isError: isSignUpError,
+    error: signUpError,
+  } = useSignUp();
 
-  const passwordRegex =
-    /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/;
+  const isError = isSendCodeError || isSignUpError;
 
-  const validate = () => {
-    const newErrors = {};
+  const onSubmit = (data) => {
+    setFormData(data);
 
-    if (!formData.username) {
-      newErrors.username = 'Username is required';
-    } else if (formData.username.length < 3) {
-      newErrors.username = 'Username must be at least 3 characters';
-    }
-
-    if (!formData.email) {
-      newErrors.email = 'Email is required';
-    } else if (!/^[\w-.]+@[\w-]+\.[a-z]{2,}$/i.test(formData.email)) {
-      newErrors.email = 'Invalid email format';
-    }
-
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (!passwordRegex.test(formData.password)) {
-      newErrors.password =
-        'Password must be at least 8 characters and include a number, a letter, and a special character.';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleChange = (e) => {
-    setErrors((prev) => ({
-      ...prev,
-      [e.target.id]: null,
-    }));
-
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.id]: e.target.value,
-    }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!validate()) return;
-
-    setLoading(true);
-    try {
-      const res = await fetch('/api/auth/verify/send-code', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || data.success === false) {
-        setErrors({ general: data.message || 'Something went wrong.' });
-        return;
-      }
-
-      setModalOpen(true);
-    } catch (error) {
-      setErrors({ general: 'Network error. Please try again.' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerify = async (code) => {
-    if (!code || code.trim().length !== 6) {
-      setCodeError('Please enter a valid 6-digit code.');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const res = await fetch('/api/auth/verify/confirm', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, code }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || data.success === false) {
-        setCodeError(data.message || 'Invalid or expired code.');
-        return;
-      }
-
-      setModalOpen(false);
-      navigate('/');
-    } catch (error) {
-      setCodeError('Something went wrong. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResendCode = () => {
-    setCodeError('');
-    handleSubmit(new Event('submit'));
+    sendCode(data.email, { onSuccess: () => setShowModal(true) });
   };
 
   const handleCloseModal = () => {
-    setCodeError('');
-    setModalOpen(false);
+    setShowModal(false);
   };
 
   return (
@@ -134,20 +79,20 @@ function SignUp() {
         Sign Up
       </h1>
 
-      <form onSubmit={handleSubmit} className='space-y-6 mb-6'>
+      <form onSubmit={handleSubmit(onSubmit)} className='space-y-6 mb-6'>
         <div className='space-y-4'>
           <div>
             <input
               type='text'
               id='username'
-              name='username'
               placeholder='Username'
-              required
-              className={`form-input ${errors.email && 'border-red-500'}`}
-              onChange={handleChange}
+              {...register('username')}
+              className={`form-input ${errors.username && 'border-red-500'}`}
             />
             {errors.username && (
-              <p className='text-xm text-red-600 mt-1'>{errors.username}</p>
+              <p className='text-xs text-red-600 mt-1'>
+                {errors.username.message}
+              </p>
             )}
           </div>
 
@@ -155,14 +100,14 @@ function SignUp() {
             <input
               type='email'
               id='email'
-              name='email'
               placeholder='Email'
-              required
+              {...register('email')}
               className={`form-input ${errors.email && 'border-red-500'}`}
-              onChange={handleChange}
             />
             {errors.email && (
-              <p className='text-xm text-red-600 mt-1'>{errors.email}</p>
+              <p className='text-xs text-red-600 mt-1'>
+                {errors.email.message}
+              </p>
             )}
           </div>
 
@@ -170,29 +115,47 @@ function SignUp() {
             <input
               type='password'
               id='password'
-              name='password'
               placeholder='Password'
-              className={`form-input ${errors.email && 'border-red-500'}`}
-              onChange={handleChange}
+              {...register('password')}
+              className={`form-input ${errors.password && 'border-red-500'}`}
             />
             {errors.password && (
-              <p className='text-xm text-red-600 mt-1'>{errors.password}</p>
+              <p className='text-xs text-red-600 mt-1'>
+                {errors.password.message}
+              </p>
             )}
           </div>
 
-          {errors.general && (
+          <input
+            type='password'
+            id='confirmPassword'
+            placeholder='Confirm Password'
+            {...register('confirmPassword')}
+            className={`form-input ${
+              errors.confirmPassword && 'border-red-500'
+            }`}
+          />
+          {errors.confirmPassword && (
+            <p className='text-xs text-red-600 mt-1'>
+              {errors.confirmPassword.message}
+            </p>
+          )}
+
+          {isError && (
             <p className='text-sm text-red-600' role='alert'>
-              {errors.general}
+              {isSignUpError
+                ? signUpError?.message || 'Sign-up failed'
+                : sendCodeError?.message || 'Failed to send email'}
             </p>
           )}
         </div>
 
         <button
           type='submit'
-          disabled={loading}
+          disabled={isSendCodePending}
           className='button-full loading-disabled'
         >
-          {loading ? (
+          {isSendCodePending ? (
             <span className='flex items-center justify-center'>
               <svg
                 className='animate-spin -ml-1 mr-2 h-4 w-4 text-white'
@@ -247,14 +210,22 @@ function SignUp() {
         </p>
       </div>
 
-      {modalOpen && (
+      {showModal && formData && (
         <VerifyModal
-          email={formData.email}
+          formData={formData}
           onClose={handleCloseModal}
-          onVerify={handleVerify}
-          loading={loading}
-          error={codeError}
-          onResend={handleResendCode}
+          onSuccess={() =>
+            signUp(formData, {
+              onSuccess: () => {
+                setShowModal(false);
+                toast.success('🎉 Sign-up complete! Please log in.');
+                setTimeout(() => {
+                  navigate('/sign-in');
+                }, 1000);
+              },
+              onError: () => setShowModal(false),
+            })
+          }
         />
       )}
     </AuthLayout>

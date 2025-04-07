@@ -1,7 +1,8 @@
 import express from 'express';
 import {
   sendVerificationCode,
-  verifyAndSignup,
+  verifyCode,
+  signup,
   signin,
   googleSignIn,
   signout,
@@ -12,8 +13,9 @@ import { verifyToken } from '../utils/verifyUser.js';
 
 const router = express.Router();
 
-router.post('/verify/send-code', sendVerificationCode);
-router.post('/verify/confirm', verifyAndSignup);
+router.post('/send-code', sendVerificationCode);
+router.post('/verify-code', verifyCode);
+router.post('/signup', signup);
 router.post('/signin', signin);
 router.post('/google', googleSignIn);
 router.get('/signout', signout);

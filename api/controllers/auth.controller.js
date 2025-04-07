@@ -1,122 +1,141 @@
-import User from '../models/user.model.js';
 import bcryptjs from 'bcryptjs';
-import { errorHandler } from '../utils/error.js';
 import jwt from 'jsonwebtoken';
-import { generateVerificationCode } from '../utils/generateCode.js';
+import nodemailer from 'nodemailer';
+import { errorHandler } from '../utils/errorHandler.js';
 import admin from '../utils/firebaseAdmin.js';
-import sendEmail from '../utils/sendEmail.js';
+import redisClient from '../lib/redisClient.js';
+import User from '../models/user.model.js';
+import { signupSchema } from '../validation/signupSchema.js';
+import { emailOnlySchema } from '../validation/emailOnlySchema.js';
 
 export const sendVerificationCode = async (req, res, next) => {
   try {
-    const { username, email, password } = req.body;
+    await emailOnlySchema.validate(req.body);
 
-    if (!username || !email || !password) {
-      return next(errorHandler(400, 'All fields are required.'));
-    }
+    const { email } = req.body;
 
-    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
-      const message =
-        existingUser.email === email
-          ? 'Email is already registered.'
-          : 'Username is already taken.';
-      return next(errorHandler(409, message));
+      if (existingUser.fromGoogle) {
+        return next(
+          errorHandler(
+            400,
+            'This email is registered via Google. Please sign in with Google.'
+          )
+        );
+      } else {
+        return next(errorHandler(400, 'Email is already registered'));
+      }
     }
 
-    const strongPasswordRegex =
-      /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/;
-    if (!strongPasswordRegex.test(password)) {
-      return next(
-        errorHandler(
-          400,
-          'Password must be at least 8 characters and include a number, a letter, and a special character.'
-        )
-      );
-    }
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    await redisClient.set(`verifyCode:${email}`, code, { EX: 300 });
 
-    const verificationCode = generateVerificationCode();
-    const verificationCodeExpires = new Date(Date.now() + 10 * 60 * 1000);
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
 
-    global.verificationStore = global.verificationStore || {};
-    global.verificationStore[email] = {
-      verificationCode,
-      verificationCodeExpires,
-      username,
-      password,
-    };
-
-    await sendEmail({
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
       to: email,
       subject: 'Houzeo Email Verification Code',
       html: `
-        <p>Welcome, ${username} 👋</p>
         <p>Your verification code is:</p>
-        <h2>${verificationCode}</h2>
-        <p>This code will expire in 10 minutes.</p>
+        <h2>${code}</h2>
+        <p>This code will expire in 5 minutes.</p>
       `,
     });
 
-    return res.status(200).json({
-      success: true,
-      message: 'Verification code sent to email.',
-    });
+    return res.status(200).json({ message: 'Verification code sent to email' });
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      return next(errorHandler(400, error.message));
+    }
+    next(error);
+  }
+};
+
+export const verifyCode = async (req, res, next) => {
+  try {
+    const { email, code } = req.body;
+
+    if (!code) return next(errorHandler(400, 'Verification code is required'));
+
+    const storedCode = await redisClient.get(`verifyCode:${email}`);
+    if (!storedCode || storedCode !== code)
+      return next(errorHandler(400, 'Invalid or expired verification code.'));
+
+    await redisClient.set(`verifiedEmail:${email}`, 'true', { EX: 600 });
+
+    res
+      .status(200)
+      .json({ message: 'Your email has been successfully verified' });
   } catch (error) {
     next(error);
   }
 };
 
-export const verifyAndSignup = async (req, res, next) => {
+export const signup = async (req, res, next) => {
   try {
-    const { email, code } = req.body;
+    await signupSchema.validate(req.body);
 
-    if (!email || !code) {
-      return next(errorHandler(400, 'Email and code are required.'));
+    const { username, email, password } = req.body;
+
+    const isVerified = await redisClient.get(`verifiedEmail:${email}`);
+    if (!isVerified)
+      return next(
+        errorHandler(400, 'Email verification required before signing up')
+      );
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      if (existingUser.fromGoogle) {
+        return next(
+          errorHandler(
+            400,
+            'This email is registered via Google. Please sign in with Google.'
+          )
+        );
+      } else {
+        return next(errorHandler(400, 'Email is already registered'));
+      }
     }
 
-    const stored = global.verificationStore?.[email];
-
-    if (
-      !stored ||
-      stored.verificationCode !== code ||
-      new Date() > stored.verificationCodeExpires
-    ) {
-      return next(errorHandler(400, 'Invalid or expired verification code.'));
-    }
-
-    const already = await User.findOne({ email });
-    if (already) {
-      return next(errorHandler(409, 'This email is already registered.'));
-    }
-
-    const hashedPassword = bcryptjs.hashSync(stored.password, 10);
-    const newUser = new User({
-      email,
-      username: stored.username,
-      password: hashedPassword,
-    });
-
+    const hashedPassword = await bcryptjs.hash(password, 10);
+    const newUser = new User({ username, email, password: hashedPassword });
     await newUser.save();
 
-    delete global.verificationStore[email];
+    await redisClient.del(`verifyCode:${email}`);
+    await redisClient.del(`verifiedEmail:${email}`);
 
-    return res.status(201).json({
-      success: true,
-      message: 'Account created successfully.',
-    });
+    res.status(201).json({ message: 'Sign up successful' });
   } catch (error) {
+    if (error.name === 'ValidationError') {
+      return next(errorHandler(400, error.message));
+    }
     next(error);
   }
 };
 
 export const signin = async (req, res, next) => {
-  const { email, password } = req.body;
-
   try {
+    console.log(req.body);
+    const { email, password } = req.body;
+
     const validUser = await User.findOne({ email });
     if (!validUser) return next(errorHandler(401, 'Invalid email or password'));
 
-    if (user.fromGoogle) {
-      return next(errorHandler(400, 'Please sign in with Google.'));
+    if (validUser.fromGoogle) {
+      return next(
+        errorHandler(
+          400,
+          'This email is registered via Google. Please sign in with Google'
+        )
+      );
     }
 
     const isPasswordValid = await bcryptjs.compare(
@@ -148,12 +167,12 @@ export const signin = async (req, res, next) => {
     res.cookie('access_token', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'None',
+      sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
     });
     res.cookie('refresh_token', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'None',
+      sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
     });
 
     res.status(200).json(user);
@@ -163,10 +182,8 @@ export const signin = async (req, res, next) => {
 };
 
 export const googleSignIn = async (req, res, next) => {
-  const { idToken } = req.body;
-  console.log(idToken);
-
   try {
+    const { idToken } = req.body;
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     const { uid, email, name, picture } = decodedToken;
 
@@ -196,12 +213,12 @@ export const googleSignIn = async (req, res, next) => {
     res.cookie('access_token', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'None',
+      sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
     });
     res.cookie('refresh_token', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'None',
+      sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
     });
 
     res.status(200).json({
@@ -235,7 +252,12 @@ export const getMe = async (req, res, next) => {
     const user = await User.findById(req.user.id).select('-password');
     if (!user) return next(errorHandler(404, 'User not found'));
 
-    res.status(200).json(user);
+    res.status(200).json({
+      id: user._id,
+      email: user.email,
+      username: user.username,
+      avatar: user.avatar,
+    });
   } catch (error) {
     next(error);
   }
@@ -255,7 +277,7 @@ export const refreshAccessToken = (req, res, next) => {
     res.cookie('access_token', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'Lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
     });
 
     res.status(200).json({ message: 'Access token refreshed' });
