@@ -15,6 +15,19 @@ export const signIn = async (formData) => {
   return data;
 };
 
+export const signOut = async () => {
+  const res = await fetch('/api/auth/signout', {
+    method: 'POST',
+    credentials: 'include',
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) throw new Error(data.message || 'User sign out failed');
+
+  return data;
+};
+
 export const googleSignIn = async (idToken) => {
   const res = await fetch('/api/auth/google', {
     method: 'POST',
@@ -35,13 +48,13 @@ export const googleSignIn = async (idToken) => {
 };
 
 export const fetchMe = async () => {
-  let res = await fetch('/api/auth/me', {
+  let res = await fetch('/api/user/me', {
     credentials: 'include',
   });
 
   if (res.status === 401) {
     await fetch('/api/auth/refresh', { credentials: 'include' });
-    res = await fetch('/api/auth/me', { credentials: 'include' });
+    res = await fetch('/api/user/me', { credentials: 'include' });
   }
   const data = await res.json();
 

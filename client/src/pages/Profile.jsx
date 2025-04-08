@@ -1,5 +1,9 @@
-import { useSelector } from 'react-redux';
-import { useRef, useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from 'yup';
+import { toast } from 'react-hot-toast';
+import { useAuthStore } from '../store/authStore';
+import { useState, useEffect } from 'react';
 import {
   getDownloadURL,
   getStorage,
@@ -7,238 +11,247 @@ import {
   uploadBytesResumable,
 } from 'firebase/storage';
 import { app } from '../firebase';
-import {
-  updateUserStart,
-  updateUserSuccess,
-  updateUserFailure,
-  deleteUserStart,
-  deleteUserSuccess,
-  deleteUserFailure,
-  signOutUserStart,
-  signOutUserSuccess,
-  signOutUserFailure,
-} from '../redux/user/userSlice.js';
-import { useDispatch } from 'react-redux';
 import { Link } from 'react-router-dom';
+import AuthLayout from '../components/layouts/AuthLayout';
+import { useUserUpdate } from '../hooks/useUserUpdate';
+import { useUserDelete } from '../hooks/useUserDelete';
+import { useSignOut } from '../hooks/useSignOut';
+
+const schema = yup.object().shape({
+  username: yup
+    .string()
+    .min(3, 'Must be at least 3 characters long')
+    .required('Username is required'),
+  email: yup
+    .string()
+    .email('Invalid email format')
+    .required('Email is required'),
+  avatar: yup
+    .mixed()
+    .test('fileSize', 'Max file size is 2MB', (value) => {
+      if (!value?.[0]) return true;
+      return value[0].size <= 2 * 1024 * 1024;
+    })
+    .test('fileType', 'Unsupported format', (value) => {
+      if (!value?.[0]) return true;
+      return ['image/jpeg', 'image/png', 'image/webp'].includes(value[0].type);
+    }),
+});
 
 function Profile() {
-  const { currentUser, loading, error } = useSelector((state) => state.user);
-  const fileRef = useRef(null);
-  const [file, setFile] = useState(undefined);
-  const [filePerc, setFilePerc] = useState(0);
-  const [fileUploadError, setFileUploadError] = useState(false);
-  const [formData, setFormData] = useState({});
-  const [updateSuccess, setUpdateSuccess] = useState(false);
-  const [showListingsError, setShowListingsError] = useState(null);
-  const [userListings, setUserListings] = useState([]);
+  const user = useAuthStore((state) => state.user);
 
-  const dispatch = useDispatch();
+  const { mutate: updateUser, isPending, isError, error } = useUserUpdate();
+  const { mutate: deleteUser } = useUserDelete();
+  const { mutate: signOut } = useSignOut();
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    reset,
+    formState: { errors },
+  } = useForm({
+    resolver: yupResolver(schema),
+    defaultValues: {
+      username: user?.username || '',
+      email: user?.email || '',
+    },
+  });
+
+  const avatarFile = watch('avatar');
+  const [preview, setPreview] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
-    if (file) {
-      handleFileUpload(file);
+    if (user) {
+      reset({
+        username: user.username || '',
+        email: user.email || '',
+      });
+      setPreview(user.avatar || null);
     }
-  }, [file]);
+  }, [user, reset]);
 
-  const handleFileUpload = (file) => {
-    const storage = getStorage(app);
-    const fileName = new Date().getTime() + file.name;
-    const storageRef = ref(storage, fileName);
-    const uploadTask = uploadBytesResumable(storageRef, file);
+  useEffect(() => {
+    const file = avatarFile?.[0];
+    if (file instanceof File) {
+      const objectUrl = URL.createObjectURL(avatarFile[0]);
+      setPreview(objectUrl);
+      return () => URL.revokeObjectURL(objectUrl);
+    }
+  }, [avatarFile]);
 
-    uploadTask.on(
-      'state_changed',
-      (snapshot) => {
-        const progress =
-          (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        setFilePerc(Math.round(progress));
-      },
-      (error) => {
-        setFileUploadError(true);
-      },
-      () => {
-        getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-          setFormData((prev) => ({ ...prev, avatar: downloadURL }));
+  const onSubmit = async (data) => {
+    try {
+      let imageUrl = user.avatar || null;
+
+      if (data.avatar?.[0]) {
+        setUploading(true);
+        const storage = getStorage(app);
+        const storageRef = ref(
+          storage,
+          `avatars/${Date.now()}-${data.avatar[0].name}`
+        );
+        const uploadTask = uploadBytesResumable(storageRef, data.avatar[0]);
+
+        await new Promise((resolve, reject) => {
+          uploadTask.on(
+            'state_changed',
+            null,
+            (error) => {
+              setUploading(false);
+              reject(error);
+            },
+            async () => {
+              imageUrl = await getDownloadURL(uploadTask.snapshot.ref);
+              setUploading(false);
+              resolve();
+            }
+          );
         });
       }
-    );
-  };
 
-  const handleChange = (e) => {
-    setFormData((prev) => ({ ...prev, [e.target.id]: e.target.value }));
-  };
+      const updatedUser = {
+        username: data.username,
+        email: data.email,
+        avatar: imageUrl,
+      };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      dispatch(updateUserStart());
-
-      const res = await fetch(`/api/user/update/${currentUser._id}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-      const data = await res.json();
-
-      if (data.success === false) {
-        dispatch(updateUserFailure(data.message));
-        return;
-      }
-
-      dispatch(updateUserSuccess(data));
-      setUpdateSuccess(true);
-    } catch (error) {
-      dispatch(updateUserFailure(error.message));
+      updateUser({ userId: user.id, updatedUser });
+      reset(updatedUser);
+    } catch (err) {
+      toast.error(err.message || 'Something went wrong');
     }
   };
 
   const handleDeleteUser = async () => {
-    try {
-      dispatch(deleteUserStart());
-
-      const res = await fetch(`/api/user/delete/${currentUser._id}`, {
-        method: 'DELETE',
-      });
-
-      const data = await res.json();
-
-      if (data.success === false) {
-        dispatch(deleteUserFailure(data.message));
-        return;
-      }
-
-      dispatch(deleteUserSuccess(data));
-    } catch (error) {
-      dispatch(deleteUserFailure(error.message));
-    }
+    deleteUser(user.id);
   };
 
   const handleSignOut = async () => {
-    try {
-      dispatch(signOutUserStart());
-
-      const res = await fetch('/api/auth/signout');
-      const data = await res.json();
-
-      if (data.success === false) {
-        dispatch(signOutUserFailure(data.message));
-        return;
-      }
-
-      dispatch(signOutUserSuccess());
-    } catch (error) {
-      dispatch(signOutUserFailure(error.message));
-    }
-  };
-
-  const handleShowListings = async () => {
-    try {
-      setShowListingsError(null);
-
-      const res = await fetch(`/api/user/listings/${currentUser._id}`);
-      const data = await res.json();
-
-      if (data.success === false) {
-        setShowListingsError(data.message);
-        return;
-      }
-
-      setUserListings(data);
-    } catch (error) {
-      setShowListingsError(error.message);
-    }
-  };
-
-  const handleListingDelete = async (listingId) => {
-    try {
-      const res = await fetch(`/api/listing/delete/${listingId}`, {
-        method: 'DELETE',
-      });
-
-      const data = await res.json();
-
-      if (data.success === false) {
-        console.log(data.message);
-        return;
-      }
-
-      setUserListings((prev) =>
-        prev.filter((listing) => listing._id !== listingId)
-      );
-    } catch (error) {
-      console.log(error.message);
-    }
+    signOut();
   };
 
   return (
-    <div className='p-3 max-w-lg mx-auto'>
-      <h1 className='text-3xl font-semibold text-center my-7'>Profile</h1>
-      <form onSubmit={handleSubmit} className='flex flex-col gap-4'>
-        <input
-          onChange={(e) => setFile(e.target.files[0])}
-          type='file'
-          ref={fileRef}
-          hidden
-          accept='image/*'
-        />
-        <img
-          onClick={() => fileRef.current.click()}
-          src={formData.avatar || currentUser.avatar}
-          alt='profile'
-          className='rounded-full h-24 w-24 object-cover cursor-pointer self-center mt-2'
-        />
-        <p className='text-sm self-center'>
-          {fileUploadError ? (
-            <span className='text-red-700'>
-              Error Image upload (The file must be an image and smaller than
-              2mb)
-            </span>
-          ) : filePerc > 0 && filePerc < 100 ? (
-            <span className='text-slate-700'>{`Uploading ${filePerc}%`}</span>
-          ) : filePerc === 100 ? (
-            <span className='text-green-700'>Image successfully uploaded!</span>
-          ) : (
-            ''
+    <AuthLayout>
+      <h1 className='text-3xl font-bold text-center text-brand-main mb-8'>
+        Profile
+      </h1>
+
+      <form onSubmit={handleSubmit(onSubmit)} className='space-y-6 mb-6'>
+        <div className='space-y-4'>
+          <div>
+            <input
+              type='file'
+              accept='image/*'
+              {...register('avatar')}
+              className='form-input'
+            />
+            {errors.avatar && (
+              <p className='text-xs text-red-600 mt-1'>
+                {errors.avatar.message}
+              </p>
+            )}
+
+            {uploading ? (
+              <div className='mt-2 w-24 h-24 flex items-center justify-center bg-gray-100 rounded-full animate-pulse text-sm text-slate-500'>
+                Uploading...
+              </div>
+            ) : preview ? (
+              <img
+                src={preview}
+                alt='preview'
+                className='mt-2 h-24 w-24 object-cover rounded-full border'
+              />
+            ) : null}
+          </div>
+
+          <div>
+            <input
+              type='text'
+              id='username'
+              placeholder='Username'
+              {...register('username')}
+              className={`form-input ${errors.username && 'border-red-500'}`}
+            />
+            {errors.username && (
+              <p className='text-xs text-red-600 mt-1'>
+                {errors.username.message}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <input
+              type='email'
+              id='email'
+              placeholder='Email'
+              {...register('email')}
+              className={`form-input ${errors.email && 'border-red-500'}`}
+            />
+            {errors.email && (
+              <p className='text-xs text-red-600 mt-1'>
+                {errors.email.message}
+              </p>
+            )}
+          </div>
+
+          {isError && (
+            <p className='text-sm text-red-600' role='alert'>
+              {error.message}
+            </p>
           )}
-        </p>
-        <input
-          type='text'
-          placeholder='username'
-          defaultValue={currentUser.username}
-          className='border p-3 rounded-lg'
-          id='username'
-          onChange={handleChange}
-        />
-        <input
-          type='email'
-          placeholder='email'
-          className='border p-3 rounded-lg'
-          defaultValue={currentUser.email}
-          id='email'
-          onChange={handleChange}
-        />
-        <input
-          type='password'
-          placeholder='password'
-          className='border p-3 rounded-lg'
-          id='password'
-          onChange={handleChange}
-        />
+        </div>
+
         <button
-          disabled={loading}
-          className='bg-slate-700 text-white rounded-lg p-3 uppercase hover:opacity-95 disabled:opacity-80'
+          type='submit'
+          disabled={uploading || isPending}
+          className='button-full loading-disabled'
+          aria-busy={uploading || isPending}
         >
-          {loading ? 'Loading...' : 'Update'}
+          {uploading || isPending ? (
+            <span className='flex items-center justify-center'>
+              <svg
+                className='animate-spin -ml-1 mr-2 h-4 w-4 text-white'
+                xmlns='http://www.w3.org/2000/svg'
+                fill='none'
+                viewBox='0 0 24 24'
+              >
+                <circle
+                  className='opacity-25'
+                  cx='12'
+                  cy='12'
+                  r='10'
+                  stroke='currentColor'
+                  strokeWidth='4'
+                ></circle>
+                <path
+                  className='opacity-75'
+                  fill='currentColor'
+                  d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'
+                ></path>
+              </svg>
+              Updating...
+            </span>
+          ) : (
+            'Save Changes'
+          )}
         </button>
-        <Link
-          to='/create-listing'
-          className='bg-green-700 text-white p-3 rounded-lg uppercase text-center hover:opacity-95'
-        >
-          Create Listing
-        </Link>
       </form>
+
+      <Link
+        to='/user-listings'
+        className='bg-green-700 text-white p-3 rounded-lg uppercase text-center hover:opacity-95'
+      >
+        Show Listings
+      </Link>
+      <Link
+        to='/change-password'
+        className='bg-green-700 text-white p-3 rounded-lg uppercase text-center hover:opacity-95'
+      >
+        Change Password
+      </Link>
 
       <div className='flex justify-between mt-5'>
         <span
@@ -251,62 +264,7 @@ function Profile() {
           Sign out
         </span>
       </div>
-
-      <p className='text-red-700 mt-5'>{error ? error : ''}</p>
-      <p className='text-green-700 mt-5'>
-        {updateSuccess ? 'User is updated successfully' : ''}
-      </p>
-
-      <button
-        onClick={handleShowListings}
-        className='text-green-700 w-full my-5'
-      >
-        Show Listings
-      </button>
-
-      {showListingsError && (
-        <p className='text-red-700 my-5'>{showListingsError}</p>
-      )}
-
-      {userListings?.length > 0 && (
-        <div className='flex flex-col gap-4'>
-          <h1 className='text-center text-3xl font-semibold'>Your Listings</h1>
-          {userListings.map((listing) => (
-            <div
-              key={listing._id}
-              className='border rounded-lg p-3 flex justify-between items-center gap-4'
-            >
-              <Link to={`/listing/${listing._id}`}>
-                <img
-                  src={listing.imageUrls[0]}
-                  alt='listing cover'
-                  className='h-16 w-16 object-contain'
-                />
-              </Link>
-              <Link
-                to={`/listing/${listing._id}`}
-                className='flex-1 text-slate-700 font-semibold hover:underline '
-              >
-                <p className='truncate'>{listing.name}</p>
-              </Link>
-              <div className='flex flex-col'>
-                <button
-                  onClick={() => {
-                    handleListingDelete(listing._id);
-                  }}
-                  className='text-red-700 uppercase'
-                >
-                  Delete
-                </button>
-                <Link to={`/update-listing/${listing._id}`}>
-                  <button className='text-green-700 uppercase'>Edit</button>
-                </Link>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+    </AuthLayout>
   );
 }
 
