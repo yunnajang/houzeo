@@ -234,30 +234,19 @@ export const googleSignIn = async (req, res, next) => {
 
 export const signout = async (req, res, next) => {
   try {
-    res
-      .clearCookie('access_token', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'Strict',
-      })
-      .status(200)
-      .json({ message: 'Logged out successfully' });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const getMe = async (req, res, next) => {
-  try {
-    const user = await User.findById(req.user.id).select('-password');
-    if (!user) return next(errorHandler(404, 'User not found'));
-
-    res.status(200).json({
-      id: user._id,
-      email: user.email,
-      username: user.username,
-      avatar: user.avatar,
+    res.clearCookie('access_token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
     });
+
+    res.clearCookie('refresh_token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
+    });
+
+    res.status(200).json({ message: 'Successfully signed out' });
   } catch (error) {
     next(error);
   }
