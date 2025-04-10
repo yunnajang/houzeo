@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 export const verifyToken = (req, res, next) => {
   const token = req.cookies.access_token;
 
-  if (!token) return next(errorHandler(401, 'Not authenticated'));
+  if (!token) return next(errorHandler(400, 'Not authenticated'));
 
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
     if (err) {

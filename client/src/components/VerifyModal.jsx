@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { IoClose } from 'react-icons/io5';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useSendCode, useVerifyCode } from '../hooks/useEmailVerification';
 
-function VerifyModal({ formData, onClose, onSuccess }) {
+function VerifyModal({ isOpen, email, onClose, onSuccess }) {
   const [code, setCode] = useState('');
   const [inputError, setInputError] = useState('');
   const [cooldown, setCooldown] = useState(0);
@@ -37,7 +38,7 @@ function VerifyModal({ formData, onClose, onSuccess }) {
     }
 
     verifyCode(
-      { email: formData.email, code },
+      { email, code },
       {
         onSuccess: () => {
           onSuccess?.();
@@ -48,77 +49,91 @@ function VerifyModal({ formData, onClose, onSuccess }) {
 
   const handleResend = () => {
     if (cooldown > 0) return;
-    resendCode(formData.email, {
+    resendCode(email, {
       onSuccess: () => setCooldown(60),
     });
   };
 
   return (
-    <div className='fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 backdrop-blur-sm'>
-      <div className='bg-white w-full max-w-md p-6 rounded-xl relative shadow-xl animate-fadeIn'>
-        <button
-          className='absolute top-4 right-4 text-xl text-gray-500 hover:text-gray-700'
-          onClick={onClose}
-          aria-label='Close'
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className='fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 backdrop-blur-sm'
         >
-          <IoClose />
-        </button>
-
-        <h2 className='text-xl font-semibold text-center mb-2'>
-          Confirm your account
-        </h2>
-        <p className='text-sm text-center text-slate-600 mb-6'>
-          Enter the 6-digit code sent to <strong>{formData.email}</strong>
-        </p>
-
-        <input
-          type='text'
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') handleVerify();
-          }}
-          maxLength={6}
-          placeholder='••••••'
-          className='form-input tracking-widest text-center text-xl mb-3'
-        />
-
-        {inputError && (
-          <p className='text-sm text-red-600 text-center'>{inputError}</p>
-        )}
-        {isError && (
-          <p className='text-sm text-red-600 text-center'>
-            {isVerifyCodeError
-              ? verifyCodeError.message
-              : resendCodeError.message}
-          </p>
-        )}
-
-        <button
-          onClick={handleVerify}
-          disabled={isVerifyCodePending}
-          className='button-full'
-        >
-          {isVerifyCodePending ? 'Verifying...' : 'Verify email'}
-        </button>
-
-        <div className='text-center text-sm mt-4 text-slate-600'>
-          Didn’t receive the email?{' '}
-          <button
-            type='button'
-            onClick={handleResend}
-            disabled={isResendCodePending || cooldown > 0}
-            className='text-brand-main font-semibold hover:underline'
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className='bg-white w-full max-w-md p-6 rounded-xl relative shadow-xl'
           >
-            {isResendCodePending
-              ? 'Resending...'
-              : cooldown > 0
-              ? `Resend in ${cooldown}s`
-              : 'Resend code'}
-          </button>
-        </div>
-      </div>
-    </div>
+            <button
+              className='absolute top-4 right-4 text-xl text-gray-500 hover:text-gray-700'
+              onClick={onClose}
+              aria-label='Close'
+            >
+              <IoClose />
+            </button>
+
+            <h2 className='text-xl font-semibold text-center mb-2'>
+              Confirm your account
+            </h2>
+            <p className='text-sm text-center text-slate-600 mb-6'>
+              Enter the 6-digit code sent to <strong>{email}</strong>
+            </p>
+
+            <input
+              type='text'
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleVerify();
+              }}
+              maxLength={6}
+              placeholder='••••••'
+              className='form-input tracking-widest text-center text-xl mb-3'
+            />
+
+            {inputError && (
+              <p className='text-sm text-red-600 text-center'>{inputError}</p>
+            )}
+            {isError && (
+              <p className='text-sm text-red-600 text-center'>
+                {isVerifyCodeError
+                  ? verifyCodeError.message
+                  : resendCodeError.message}
+              </p>
+            )}
+
+            <button
+              onClick={handleVerify}
+              disabled={isVerifyCodePending}
+              className='button-full'
+            >
+              {isVerifyCodePending ? 'Verifying...' : 'Verify email'}
+            </button>
+
+            <div className='text-center text-sm mt-4 text-slate-600'>
+              Didn't receive the email?{' '}
+              <button
+                type='button'
+                onClick={handleResend}
+                disabled={isResendCodePending || cooldown > 0}
+                className='text-brand-main font-semibold hover:underline'
+              >
+                {isResendCodePending
+                  ? 'Resending...'
+                  : cooldown > 0
+                  ? `Resend in ${cooldown}s`
+                  : 'Resend code'}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 

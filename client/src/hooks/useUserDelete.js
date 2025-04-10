@@ -16,7 +16,7 @@ export const useUserDelete = () => {
       navigate('/');
     },
     onError: () => {
-      toast.error('Failed to delete account');
+      toast.error("Couldn't delete your account. Please try again");
     },
   });
 };

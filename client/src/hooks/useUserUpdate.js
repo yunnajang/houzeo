@@ -9,7 +9,8 @@ export const useUserUpdate = () => {
   return useMutation({
     mutationFn: updateUser,
     onSuccess: (user) => {
-      setAuth(user), toast.success('Profile updated!');
+      setAuth(user);
+      toast.success('Your profile has been updated.');
     },
   });
 };

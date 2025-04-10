@@ -1,3 +1,4 @@
+import redisClient from '../lib/redisClient.js';
 import Listing from '../models/listing.model.js';
 import User from '../models/user.model.js';
 import { errorHandler } from '../utils/errorHandler.js';
@@ -8,7 +9,7 @@ export const updateUser = async (req, res, next) => {
   try {
     const userId = req.user.id;
     if (userId !== req.params.id) {
-      return next(errorHandler(401, 'You can only update your own account!'));
+      return next(errorHandler(401, 'You can only update your own account'));
     }
     const { username, email, avatar } = req.body;
 
@@ -27,6 +28,11 @@ export const updateUser = async (req, res, next) => {
       const existingEmail = await User.findOne({ email });
       if (existingEmail)
         return next(errorHandler(409, 'Email is already registered'));
+
+      const isVerified = await redisClient.get(`verifiedEmail:${email}`);
+      if (isVerified !== 'true') {
+        return next(errorHandler(400, 'This email has not been verified.'));
+      }
     }
 
     currentUser.username = username;
@@ -34,6 +40,10 @@ export const updateUser = async (req, res, next) => {
     if (avatar) currentUser.avatar = avatar;
 
     await currentUser.save();
+
+    if (email !== currentUser.email) {
+      await redisClient.del(`verifiedEmail:${email}`);
+    }
 
     res.status(200).json({
       id: currentUser._id,

@@ -8,7 +8,6 @@ export const useSignIn = () => {
   return useMutation({
     mutationFn: signIn,
     onSuccess: (user) => {
-      console.log(user);
       setAuth(user);
     },
   });

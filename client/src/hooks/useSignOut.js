@@ -12,11 +12,11 @@ export const useSignOut = () => {
     mutationFn: signOut,
     onSuccess: () => {
       clearAuth();
-      toast.success('Signed out successfully');
+      toast.success('Signed out successfully.');
       navigate('/sign-in');
     },
     onError: () => {
-      toast.error('Sign out failed');
+      toast.error("Couldn't sign you out. Please try again.");
     },
   });
 };

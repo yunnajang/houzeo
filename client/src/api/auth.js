@@ -23,7 +23,7 @@ export const signOut = async () => {
 
   const data = await res.json();
 
-  if (!res.ok) throw new Error(data.message || 'User sign out failed');
+  if (!res.ok) throw new Error("Couldn't sign you out. Please try again.");
 
   return data;
 };
@@ -74,7 +74,8 @@ export const sendCode = async (email) => {
 
   const data = await res.json();
 
-  if (!res.ok) throw new Error(data.message || 'Email send failed');
+  if (!res.ok)
+    throw new Error(data.message || 'Failed to send verification code.');
 
   return data;
 };
@@ -90,7 +91,8 @@ export const verifyCode = async ({ email, code }) => {
 
   const data = await res.json();
 
-  if (!res.ok) throw new Error(data.message || 'Email verification failed');
+  if (!res.ok)
+    throw new Error(data.message || 'Invalid or expired verification code.');
 
   return data;
 };

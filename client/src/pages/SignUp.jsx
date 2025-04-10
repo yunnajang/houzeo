@@ -126,20 +126,22 @@ function SignUp() {
             )}
           </div>
 
-          <input
-            type='password'
-            id='confirmPassword'
-            placeholder='Confirm Password'
-            {...register('confirmPassword')}
-            className={`form-input ${
-              errors.confirmPassword && 'border-red-500'
-            }`}
-          />
-          {errors.confirmPassword && (
-            <p className='text-xs text-red-600 mt-1'>
-              {errors.confirmPassword.message}
-            </p>
-          )}
+          <div>
+            <input
+              type='password'
+              id='confirmPassword'
+              placeholder='Confirm Password'
+              {...register('confirmPassword')}
+              className={`form-input ${
+                errors.confirmPassword && 'border-red-500'
+              }`}
+            />
+            {errors.confirmPassword && (
+              <p className='text-xs text-red-600 mt-1'>
+                {errors.confirmPassword.message}
+              </p>
+            )}
+          </div>
 
           {isError && (
             <p className='text-sm text-red-600' role='alert'>
@@ -212,7 +214,7 @@ function SignUp() {
 
       {showModal && formData && (
         <VerifyModal
-          formData={formData}
+          email={formData.email}
           onClose={handleCloseModal}
           onSuccess={() =>
             signUp(formData, {

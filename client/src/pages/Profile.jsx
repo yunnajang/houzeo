@@ -13,9 +13,12 @@ import {
 import { app } from '../firebase';
 import { Link } from 'react-router-dom';
 import AuthLayout from '../components/layouts/AuthLayout';
+import ConfirmModal from '../components/ConfirmModal';
+import VerifyModal from '../components/VerifyModal';
 import { useUserUpdate } from '../hooks/useUserUpdate';
 import { useUserDelete } from '../hooks/useUserDelete';
 import { useSignOut } from '../hooks/useSignOut';
+import { useSendCode } from '../hooks/useEmailVerification';
 
 const schema = yup.object().shape({
   username: yup
@@ -41,12 +44,14 @@ const schema = yup.object().shape({
 function Profile() {
   const user = useAuthStore((state) => state.user);
 
+  const { mutate: sendCode, isPending: isSendingCode } = useSendCode();
   const { mutate: updateUser, isPending, isError, error } = useUserUpdate();
   const { mutate: deleteUser } = useUserDelete();
   const { mutate: signOut } = useSignOut();
 
   const {
     register,
+    getValues,
     handleSubmit,
     watch,
     reset,
@@ -54,83 +59,83 @@ function Profile() {
   } = useForm({
     resolver: yupResolver(schema),
     defaultValues: {
-      username: user?.username || '',
-      email: user?.email || '',
+      username: user.username,
+      email: user.email,
     },
   });
 
   const avatarFile = watch('avatar');
-  const [preview, setPreview] = useState(null);
-  const [uploading, setUploading] = useState(false);
+  const watchedEmail = watch('email');
 
-  useEffect(() => {
-    if (user) {
-      reset({
-        username: user.username || '',
-        email: user.email || '',
-      });
-      setPreview(user.avatar || null);
-    }
-  }, [user, reset]);
+  const isEmailChanged = watchedEmail !== user.email;
+
+  const [uploadedImageUrl, setUploadedImageUrl] = useState(user.avatar);
+  const [preview, setPreview] = useState(user.avatar);
+  const [uploading, setUploading] = useState(false);
+  const [modalEmail, setModalEmail] = useState('');
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
 
   useEffect(() => {
     const file = avatarFile?.[0];
-    if (file instanceof File) {
-      const objectUrl = URL.createObjectURL(avatarFile[0]);
-      setPreview(objectUrl);
-      return () => URL.revokeObjectURL(objectUrl);
-    }
+    if (!file || !(file instanceof File)) return;
+
+    setPreview(URL.createObjectURL(file));
+    setUploading(true);
+
+    const storage = getStorage(app);
+    const storageRef = ref(storage, `avatars/${Date.now()}-${file.name}`);
+    const uploadTask = uploadBytesResumable(storageRef, file);
+
+    const unsubscribe = uploadTask.on(
+      'state_changed',
+      null,
+      (error) => {
+        console.error('Upload failed:', error);
+        toast.error('Failed to upload your image. Please try again.');
+        setUploading(false);
+      },
+      async () => {
+        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+        setUploadedImageUrl(downloadURL);
+        setUploading(false);
+      }
+    );
+
+    return () => {
+      unsubscribe();
+      URL.revokeObjectURL(preview);
+    };
   }, [avatarFile]);
 
-  const onSubmit = async (data) => {
-    try {
-      let imageUrl = user.avatar || null;
+  const handleVerifyClick = () => {
+    const email = getValues('email');
 
-      if (data.avatar?.[0]) {
-        setUploading(true);
-        const storage = getStorage(app);
-        const storageRef = ref(
-          storage,
-          `avatars/${Date.now()}-${data.avatar[0].name}`
-        );
-        const uploadTask = uploadBytesResumable(storageRef, data.avatar[0]);
-
-        await new Promise((resolve, reject) => {
-          uploadTask.on(
-            'state_changed',
-            null,
-            (error) => {
-              setUploading(false);
-              reject(error);
-            },
-            async () => {
-              imageUrl = await getDownloadURL(uploadTask.snapshot.ref);
-              setUploading(false);
-              resolve();
-            }
-          );
-        });
-      }
-
-      const updatedUser = {
-        username: data.username,
-        email: data.email,
-        avatar: imageUrl,
-      };
-
-      updateUser({ userId: user.id, updatedUser });
-      reset(updatedUser);
-    } catch (err) {
-      toast.error(err.message || 'Something went wrong');
+    if (!email.includes('@')) {
+      toast.error('Invalid email format.');
+      return;
     }
+
+    setModalEmail(email);
+
+    sendCode(email, {
+      onSuccess: () => setShowVerifyModal(true),
+      onError: () => toast.error('Email is already registered.'),
+    });
   };
 
-  const handleDeleteUser = async () => {
-    deleteUser(user.id);
-  };
+  const onSubmit = async (data) => {
+    const updatedUser = {
+      username: data.username,
+      email: data.email,
+      avatar: uploadedImageUrl,
+    };
 
-  const handleSignOut = async () => {
-    signOut();
+    updateUser(
+      { userId: user.id, updatedUser },
+      { onSuccess: () => reset(updatedUser) }
+    );
   };
 
   return (
@@ -183,13 +188,23 @@ function Profile() {
           </div>
 
           <div>
-            <input
-              type='email'
-              id='email'
-              placeholder='Email'
-              {...register('email')}
-              className={`form-input ${errors.email && 'border-red-500'}`}
-            />
+            <div className='flex gap-1'>
+              <input
+                type='email'
+                id='email'
+                placeholder='Email'
+                {...register('email')}
+                className={`form-input ${errors.email && 'border-red-500'}`}
+              />
+              <button
+                type='button'
+                onClick={handleVerifyClick}
+                disabled={isEmailVerified || !isEmailChanged || isSendingCode}
+                className='button-hover rounded-lg disabled:bg-opacity-50'
+              >
+                {isSendingCode ? 'Sending...' : 'Verify'}
+              </button>
+            </div>
             {errors.email && (
               <p className='text-xs text-red-600 mt-1'>
                 {errors.email.message}
@@ -206,11 +221,13 @@ function Profile() {
 
         <button
           type='submit'
-          disabled={uploading || isPending}
+          disabled={
+            uploading || isPending || (isEmailChanged && !isEmailVerified)
+          }
           className='button-full loading-disabled'
           aria-busy={uploading || isPending}
         >
-          {uploading || isPending ? (
+          {isPending ? (
             <span className='flex items-center justify-center'>
               <svg
                 className='animate-spin -ml-1 mr-2 h-4 w-4 text-white'
@@ -240,6 +257,29 @@ function Profile() {
         </button>
       </form>
 
+      {showVerifyModal && (
+        <VerifyModal
+          isOpen={showVerifyModal}
+          email={modalEmail}
+          onClose={() => setShowVerifyModal(false)}
+          onSuccess={() => {
+            setShowVerifyModal(false);
+            toast.success('Your email has been verified successfully.');
+            setIsEmailVerified(true);
+          }}
+        />
+      )}
+
+      {showConfirmModal && (
+        <ConfirmModal
+          title='Delete Account'
+          message='Are you absolutely sure? Your data will be gone forever'
+          isOpen={showConfirmModal}
+          onConfirm={() => deleteUser(user.id)}
+          onCancel={() => setShowConfirmModal(false)}
+        />
+      )}
+
       <Link
         to='/user-listings'
         className='bg-green-700 text-white p-3 rounded-lg uppercase text-center hover:opacity-95'
@@ -255,12 +295,12 @@ function Profile() {
 
       <div className='flex justify-between mt-5'>
         <span
-          onClick={handleDeleteUser}
+          onClick={() => setShowConfirmModal(true)}
           className='text-red-700 cursor-pointer'
         >
           Delete Account
         </span>
-        <span onClick={handleSignOut} className='text-red-700 cursor-pointer'>
+        <span onClick={() => signOut()} className='text-red-700 cursor-pointer'>
           Sign out
         </span>
       </div>
