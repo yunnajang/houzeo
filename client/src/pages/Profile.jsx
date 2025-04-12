@@ -19,6 +19,7 @@ import { useUserUpdate } from '../hooks/useUserUpdate';
 import { useUserDelete } from '../hooks/useUserDelete';
 import { useSignOut } from '../hooks/useSignOut';
 import { useSendCode } from '../hooks/useEmailVerification';
+import { IoList, IoKey, IoTrashBin, IoLogOut } from 'react-icons/io5';
 
 const schema = yup.object().shape({
   username: yup
@@ -257,6 +258,56 @@ function Profile() {
         </button>
       </form>
 
+      <div className='space-y-6'>
+        <div className='space-y-4'>
+          <Link
+            to='/user-listings'
+            className='group flex items-center justify-center p-4 bg-white rounded-lg border border-slate-200 hover:border-brand-main/50 hover:bg-brand-main/5 transition-all duration-300 hover:shadow-lg'
+          >
+            <div className='flex items-center gap-3'>
+              <span className='text-brand-main group-hover:scale-110 transition-transform duration-300'>
+                <IoList className='text-2xl' />
+              </span>
+              <span className='text-slate-700 font-medium'>My Listings</span>
+            </div>
+          </Link>
+          <Link
+            to='/change-password'
+            className='group flex items-center justify-center p-4 bg-white rounded-lg border border-slate-200 hover:border-brand-main/50 hover:bg-brand-main/5 transition-all duration-300 hover:shadow-lg'
+          >
+            <div className='flex items-center gap-3'>
+              <span className='text-brand-main group-hover:scale-110 transition-transform duration-300'>
+                <IoKey className='text-2xl' />
+              </span>
+              <span className='text-slate-700 font-medium'>
+                Change Password
+              </span>
+            </div>
+          </Link>
+        </div>
+
+        <div className='flex justify-between items-center pt-6 border-t border-slate-200'>
+          <button
+            onClick={() => setShowConfirmModal(true)}
+            className='group flex items-center gap-2 text-red-600 hover:text-red-700 font-medium transition-colors'
+          >
+            <span className='group-hover:rotate-12 transition-transform duration-300'>
+              <IoTrashBin className='text-xl' />
+            </span>
+            Delete Account
+          </button>
+          <button
+            onClick={() => signOut()}
+            className='group flex items-center gap-2 text-slate-600 hover:text-slate-700 font-medium transition-colors'
+          >
+            <span className='group-hover:-translate-x-1 transition-transform duration-300'>
+              <IoLogOut className='text-xl' />
+            </span>
+            Sign out
+          </button>
+        </div>
+      </div>
+
       {showVerifyModal && (
         <VerifyModal
           isOpen={showVerifyModal}
@@ -279,31 +330,6 @@ function Profile() {
           onCancel={() => setShowConfirmModal(false)}
         />
       )}
-
-      <Link
-        to='/user-listings'
-        className='bg-green-700 text-white p-3 rounded-lg uppercase text-center hover:opacity-95'
-      >
-        Show Listings
-      </Link>
-      <Link
-        to='/change-password'
-        className='bg-green-700 text-white p-3 rounded-lg uppercase text-center hover:opacity-95'
-      >
-        Change Password
-      </Link>
-
-      <div className='flex justify-between mt-5'>
-        <span
-          onClick={() => setShowConfirmModal(true)}
-          className='text-red-700 cursor-pointer'
-        >
-          Delete Account
-        </span>
-        <span onClick={() => signOut()} className='text-red-700 cursor-pointer'>
-          Sign out
-        </span>
-      </div>
     </AuthLayout>
   );
 }
